@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ProgressBar } from '../../components/ProgressBar'
 import { StatusBadge } from '../../components/StatusBadge'
@@ -8,8 +8,10 @@ import { getWizardQuestions } from '../../services/applicationEngine'
 import { getApplicationDefinition } from '../../domain/applicationDefinitions'
 import { getApplicableRequirements } from '../../services/application/requirementsEngine'
 import { buildWizardPlan } from '../../services/wizard/wizardService'
+import { getQuestionRenderer } from '../../services/wizard/questionRendererRegistry'
+import { validateQuestionAnswer } from '../../services/wizard/wizardValidation'
 import { getFieldValue } from '../../services/application/fieldAccess'
-import type { FieldValue } from '../../domain/types'
+import type { DocumentCategory, DocumentRecord, FieldValue } from '../../domain/types'
 
 const sectionMap: Record<string, { title: string; summary: string }> = {
   overview: {
@@ -135,8 +137,15 @@ export const CustomerOverviewPage = () => {
 }
 
 export const DocumentIntakePage = () => {
-  const { application, processDocuments, processDocumentWithAI } = useAppState()
+  const { application, processDocuments, processDocumentWithAI, uploadDocument } = useAppState()
   const [processingDocId, setProcessingDocId] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | ''>('')
+  const [autoProcessOnUpload, setAutoProcessOnUpload] = useState(true)
+  const [inspectedDoc, setInspectedDoc] = useState<DocumentRecord | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleProcessSingle = async (docId: string) => {
     setProcessingDocId(docId)
@@ -151,6 +160,66 @@ export const DocumentIntakePage = () => {
     await processDocuments()
   }
 
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setUploadError(null)
+    setIsUploading(true)
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const result = await uploadDocument(file, selectedCategory || undefined)
+        if (!result.success) {
+          setUploadError(result.error || `Failed to upload "${file.name}"`)
+          break
+        } else if (autoProcessOnUpload && result.document) {
+          await handleProcessSingle(result.document.id)
+        }
+      }
+    } catch (err: any) {
+      setUploadError(err.message || 'An unexpected error occurred during upload')
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await handleFileUpload(e.dataTransfer.files)
+    }
+  }
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return ''
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const getDocFacts = (doc: DocumentRecord) => {
+    return application.profile.fieldProvenance.filter(
+      (p) => p.sourceDocument === doc.fileName || p.sourceDocument === doc.id || p.sourceDocument?.includes(doc.fileName),
+    )
+  }
+
   return (
     <div className="stack-lg">
       <div className="page-header">
@@ -158,7 +227,7 @@ export const DocumentIntakePage = () => {
           <p className="eyebrow">Document intelligence</p>
           <h2>Upload insurance documents & extract candidate evidence</h2>
           <p className="lede">
-            Insurly classifies documents, extracts normalized candidate facts with provenance, and pre-populates application state without overwriting customer-verified truth.
+            Upload real PDF policies, ACORD applications, loss runs, or business filings. Insurly classifies documents, extracts normalized candidate facts with provenance, and populates application state without overwriting protected truth.
           </p>
         </div>
         <button className="button" type="button" onClick={handleProcessAll}>
@@ -166,18 +235,103 @@ export const DocumentIntakePage = () => {
         </button>
       </div>
 
-      <SurfaceCard title="Uploaded Document Intelligence Set" eyebrow="Classification & Processing">
+      <SurfaceCard title="Upload Real Insurance Document" eyebrow="Direct Ingestion">
+        <div className="stack-md">
+          <div className="split" style={{ alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                Document Category Hint:
+                <select
+                  style={{ marginLeft: '0.5rem', padding: '0.4rem 0.75rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value as DocumentCategory | '')}
+                >
+                  <option value="">Auto-Detect Category</option>
+                  <option value="current_policy">Current Policy (Dec Page / COI)</option>
+                  <option value="prior_acord_application">Prior ACORD 125/126 Application</option>
+                  <option value="loss_runs">Loss Runs Report</option>
+                  <option value="vehicle_schedule">Commercial Auto Schedule</option>
+                  <option value="business_document">Business Entity / Tax Document</option>
+                </select>
+              </label>
+
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={autoProcessOnUpload}
+                  onChange={(e) => setAutoProcessOnUpload(e.target.checked)}
+                />
+                Auto-extract immediately on upload
+              </label>
+            </div>
+
+            <span className="tag-badge tag-badge--model">
+              ⚡ Server-side Multimodal AI Engine
+            </span>
+          </div>
+
+          <div
+            className={`dropzone ${isDragging ? 'dropzone--active' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+              style={{ display: 'none' }}
+              onChange={(e) => handleFileUpload(e.target.files)}
+            />
+            <div className="dropzone__icon">📄</div>
+            <div>
+              <strong>{isUploading ? 'Uploading and preparing document...' : 'Click or Drag & Drop Real Documents Here'}</strong>
+              <p className="muted" style={{ marginTop: 4 }}>
+                Supports PDF, PNG, JPEG, WEBP up to 20MB. Raw files are processed securely server-side.
+              </p>
+            </div>
+          </div>
+
+          {uploadError && (
+            <div style={{ padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '0.5rem', color: '#b91c1c' }}>
+              <strong>Upload Error:</strong> {uploadError}
+            </div>
+          )}
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard title="Document Intelligence Set" eyebrow="Classification & Processing">
         <div className="table-like">
           {application.profile.documents.map((document) => {
             const summary = document.extractionSummary
-            const isProcessing = processingDocId === document.id || document.status === 'processing' || document.status === 'extracting' || document.status === 'classifying'
+            const isProcessing =
+              processingDocId === document.id ||
+              document.status === 'processing' ||
+              document.status === 'extracting' ||
+              document.status === 'classifying'
+            const isRealUpload = document.source === 'uploaded' || Boolean(document.storagePath)
+            const docFacts = getDocFacts(document)
 
             return (
-              <div className="table-like__row" key={document.id} style={{ alignItems: 'flex-start', padding: '12px 0' }}>
+              <div className="table-like__row" key={document.id} style={{ alignItems: 'flex-start', padding: '14px 0' }}>
                 <div style={{ flex: 1 }}>
-                  <strong>{document.fileName}</strong>
-                  <p className="muted">
-                    Category: {document.category ?? document.type} {summary ? `· ${Math.round(summary.classificationConfidence * 100)}% match` : ''}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <strong>{document.fileName}</strong>
+                    {isRealUpload ? (
+                      <span className="tag-badge tag-badge--real">Real Document Upload</span>
+                    ) : (
+                      <span className="tag-badge tag-badge--demo">Demo Fixture</span>
+                    )}
+                    {document.fileSize && (
+                      <span className="muted" style={{ fontSize: '0.8rem' }}>
+                        ({formatFileSize(document.fileSize)})
+                      </span>
+                    )}
+                  </div>
+                  <p className="muted" style={{ marginTop: 4 }}>
+                    Category: {document.category ?? document.type}{' '}
+                    {summary ? `· ${Math.round(summary.classificationConfidence * 100)}% classification confidence` : ''}
                   </p>
                   {document.failureReason && (
                     <p className="text-sm" style={{ color: '#ef4444', marginTop: 4 }}>
@@ -185,7 +339,7 @@ export const DocumentIntakePage = () => {
                     </p>
                   )}
                   {summary && (
-                    <div className="pill-row" style={{ marginTop: 6 }}>
+                    <div className="pill-row" style={{ marginTop: 8 }}>
                       <span className="pill">{summary.totalFactsFound} facts found</span>
                       <span className="pill" style={{ backgroundColor: '#ecfdf5', color: '#047857' }}>
                         {summary.acceptedFactsCount} accepted
@@ -203,16 +357,36 @@ export const DocumentIntakePage = () => {
                     </div>
                   )}
                 </div>
-                <div className="button-row" style={{ alignItems: 'center' }}>
+                <div className="button-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
                   <StatusBadge status={document.status} />
-                  <button
-                    className="button button--secondary"
-                    type="button"
-                    disabled={isProcessing}
-                    onClick={() => handleProcessSingle(document.id)}
-                  >
-                    {isProcessing ? 'Processing...' : 'Process with AI'}
-                  </button>
+                  {docFacts.length > 0 && (
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      onClick={() => setInspectedDoc(document)}
+                    >
+                      Inspect Facts ({docFacts.length})
+                    </button>
+                  )}
+                  {document.status === 'failed' ? (
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={() => handleProcessSingle(document.id)}
+                    >
+                      {isProcessing ? 'Retrying...' : 'Retry Extraction'}
+                    </button>
+                  ) : (
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={() => handleProcessSingle(document.id)}
+                    >
+                      {isProcessing ? 'Processing AI...' : 'Process with AI'}
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -220,10 +394,85 @@ export const DocumentIntakePage = () => {
         </div>
       </SurfaceCard>
 
+      {inspectedDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '2rem',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              maxWidth: '800px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              padding: '2rem',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Candidate Facts: {inspectedDoc.fileName}</h3>
+                <p className="muted" style={{ margin: '0.25rem 0 0 0' }}>
+                  Category: {inspectedDoc.category ?? inspectedDoc.type} · {getDocFacts(inspectedDoc).length} extracted facts
+                </p>
+              </div>
+              <button className="button button--secondary" type="button" onClick={() => setInspectedDoc(null)}>
+                Close
+              </button>
+            </div>
+
+            <div className="table-like">
+              {getDocFacts(inspectedDoc).map((fact) => {
+                const confPercent = Math.round((fact.confidence ?? 0.8) * 100)
+                const confColor = confPercent >= 85 ? '#047857' : confPercent >= 60 ? '#b45309' : '#b91c1c'
+                const confBg = confPercent >= 85 ? '#ecfdf5' : confPercent >= 60 ? '#fffbeb' : '#fef2f2'
+
+                return (
+                  <div className="table-like__row provenance-row" key={fact.id}>
+                    <div>
+                      <strong>{fact.label}</strong>
+                      <p className="muted">{fact.canonicalField}</p>
+                    </div>
+                    <div>
+                      <strong>{String(fact.value)}</strong>
+                      <p className="muted">{fact.sourcePage ? `Page ${fact.sourcePage}` : 'Document extraction'}</p>
+                    </div>
+                    <div>
+                      <span
+                        className="pill"
+                        style={{ backgroundColor: confBg, color: confColor, fontWeight: 600 }}
+                      >
+                        {confPercent}% confidence
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button className="button" type="button" onClick={() => setInspectedDoc(null)}>
+                Done Inspecting
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SurfaceCard title="Extracted Fact Provenance" eyebrow="Evidence History">
         <div className="table-like">
           {application.profile.fieldProvenance.length === 0 ? (
-            <p className="muted">No document facts extracted yet. Click "Process with AI" above to extract evidence.</p>
+            <p className="muted">No document facts extracted yet. Upload a document or click "Process with AI" above to extract evidence.</p>
           ) : (
             application.profile.fieldProvenance.map((fact) => (
               <div className="table-like__row provenance-row" key={fact.id}>
@@ -268,17 +517,32 @@ export const SmartWizardPage = () => {
   const currentQuestion = plan.unresolvedQuestions[activeQuestionIndex] ?? plan.unresolvedQuestions[0]
 
   const [questionInputMap, setQuestionInputMap] = useState<Record<string, FieldValue>>({})
+  const [validationError, setValidationError] = useState<string | null>(null)
+
   const inputValue = currentQuestion
     ? questionInputMap[currentQuestion.id] ?? currentQuestion.currentValue ?? ''
     : ''
 
+  // Clear validation error when changing questions
+  useEffect(() => {
+    setValidationError(null)
+  }, [currentQuestion?.id])
+
   const handleInputChange = (val: FieldValue) => {
     if (!currentQuestion) return
+    setValidationError(null)
     setQuestionInputMap((prev) => ({ ...prev, [currentQuestion.id]: val }))
   }
 
   const handleSaveAndContinue = () => {
     if (!currentQuestion) return
+
+    // Run per-question validation engine
+    const validation = validateQuestionAnswer(currentQuestion, inputValue)
+    if (!validation.valid) {
+      setValidationError(validation.error || 'Please provide a valid answer before continuing.')
+      return
+    }
 
     let parsedValue: FieldValue = inputValue
     if (currentQuestion.inputType === 'number' || currentQuestion.inputType === 'currency') {
@@ -287,6 +551,7 @@ export const SmartWizardPage = () => {
       parsedValue = String(inputValue) === 'true' || inputValue === true
     }
 
+    setValidationError(null)
     answerWizardQuestion(currentQuestion.canonicalField, parsedValue)
   }
 
@@ -295,6 +560,33 @@ export const SmartWizardPage = () => {
       setActiveQuestionIndex((prev) => prev - 1)
     }
   }
+
+  // Keyboard navigation listener (Enter to submit, Alt+Left/Right to navigate)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault()
+          handleSaveAndContinue()
+        }
+        return
+      }
+
+      if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault()
+        handlePrevious()
+      } else if (e.altKey && e.key === 'ArrowRight' && activeQuestionIndex < plan.unresolvedQuestions.length - 1) {
+        e.preventDefault()
+        setActiveQuestionIndex((prev) => prev + 1)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentQuestion, inputValue, activeQuestionIndex, plan.unresolvedQuestions.length])
+
+  // Get modular Question Renderer
+  const RendererComponent = currentQuestion ? getQuestionRenderer(currentQuestion.inputType) : null
 
   return (
     <div className="stack-lg">
@@ -308,7 +600,7 @@ export const SmartWizardPage = () => {
         </div>
         <div className="pill-row">
           <span className="pill">Skip known fields</span>
-          <span className="pill">Save & resume</span>
+          <span className="pill">Keyboard: Enter to continue</span>
           <span className="pill">Deterministic logic</span>
         </div>
       </div>
@@ -353,7 +645,7 @@ export const SmartWizardPage = () => {
             : 'Complete'
         }
       >
-        {currentQuestion ? (
+        {currentQuestion && RendererComponent ? (
           <div className="wizard-card stack-md">
             <div className="split">
               <span>
@@ -384,90 +676,64 @@ export const SmartWizardPage = () => {
                   ? '✓ Updates reusable customer profile'
                   : 'ℹ Application-only fact (policy specific)'}
               </span>
-            </div>
-
-            <div className="form-group" style={{ margin: '1rem 0' }}>
-              {currentQuestion.inputType === 'select' || currentQuestion.options ? (
-                <select
-                  className="input"
-                  value={String(inputValue)}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                >
-                  <option value="">Select an option...</option>
-                  {currentQuestion.options?.map((opt) => (
-                    <option key={String(opt.value)} value={String(opt.value)}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              ) : currentQuestion.inputType === 'boolean' ? (
-                <select
-                  className="input"
-                  value={String(inputValue)}
-                  onChange={(e) => handleInputChange(e.target.value === 'true')}
-                >
-                  <option value="">Select...</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              ) : currentQuestion.inputType === 'date' ? (
-                <input
-                  type="date"
-                  className="input"
-                  value={String(inputValue)}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                />
-              ) : currentQuestion.inputType === 'number' || currentQuestion.inputType === 'currency' ? (
-                <div style={{ position: 'relative' }}>
-                  {currentQuestion.inputType === 'currency' && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        left: '0.75rem',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        color: '#6b7280',
-                      }}
-                    >
-                      $
-                    </span>
-                  )}
-                  <input
-                    type="number"
-                    className="input"
-                    style={{ paddingLeft: currentQuestion.inputType === 'currency' ? '2rem' : undefined }}
-                    placeholder={currentQuestion.placeholder ?? '0'}
-                    value={String(inputValue)}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                  />
-                </div>
-              ) : (
-                <input
-                  type="text"
-                  className="input"
-                  placeholder={currentQuestion.placeholder ?? 'Enter value...'}
-                  value={String(inputValue)}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                />
+              {currentQuestion.required && (
+                <span className="pill" style={{ fontSize: '0.75rem', backgroundColor: '#fef2f2', color: '#b91c1c' }}>
+                  Required
+                </span>
               )}
             </div>
 
-            <div className="button-row">
-              <button
-                className="button button--secondary"
-                type="button"
-                onClick={handlePrevious}
-                disabled={activeQuestionIndex === 0}
+            <div className="form-group" style={{ margin: '1rem 0' }}>
+              <RendererComponent
+                question={currentQuestion}
+                value={inputValue}
+                onChange={handleInputChange}
+                onSubmit={handleSaveAndContinue}
+                autoFocus={true}
+              />
+            </div>
+
+            {validationError && (
+              <div
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '0.375rem',
+                  color: '#b91c1c',
+                  fontSize: '0.875rem',
+                }}
               >
-                Previous
-              </button>
+                ⚠ {validationError}
+              </div>
+            )}
+
+            <div className="button-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  onClick={handlePrevious}
+                  disabled={activeQuestionIndex === 0}
+                >
+                  Previous
+                </button>
+                {activeQuestionIndex < plan.unresolvedQuestions.length - 1 && (
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    onClick={() => setActiveQuestionIndex((prev) => prev + 1)}
+                  >
+                    Skip to Next
+                  </button>
+                )}
+              </div>
               <button
                 className="button"
                 type="button"
                 onClick={handleSaveAndContinue}
-                disabled={inputValue === '' || inputValue === undefined}
               >
-                Save and continue
+                Save and continue ↵
               </button>
             </div>
           </div>

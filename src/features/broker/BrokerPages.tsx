@@ -4,6 +4,7 @@ import { SurfaceCard } from '../../components/SurfaceCard'
 import { StatusBadge } from '../../components/StatusBadge'
 import { brokerMetrics } from '../../data/mock/insurly'
 import { getFieldValue } from '../../services/application/fieldAccess'
+import { getAvailableAdapters, getApplicationAdapter } from '../../adapters/applications/registry'
 import { useAppState } from '../../state/useAppState'
 
 const brokerNav = ['Dashboard', 'Customers', 'Applications', 'Needs Review', 'Documents', 'Analytics', 'Settings']
@@ -163,8 +164,13 @@ export const BrokerApplicationPage = () => {
 }
 
 export const BrokerFormsPage = () => {
-  const { acordPreview, markGenerated, application, latestSnapshot, snapshots, readiness } = useAppState()
+  const { markGenerated, application, latestSnapshot, snapshots, readiness } = useAppState()
   const [showPackagePreview, setShowPackagePreview] = useState(false)
+  const [selectedAdapterId, setSelectedAdapterId] = useState('acord-125:2016-03')
+
+  const availableAdapters = getAvailableAdapters()
+  const currentAdapter = getApplicationAdapter(selectedAdapterId)
+  const acordPreview = currentAdapter.buildPreview(application)
 
   const handleExportJson = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(latestSnapshot ?? application, null, 2))
@@ -180,10 +186,10 @@ export const BrokerFormsPage = () => {
     <div className="stack-lg">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Carrier Submission Package · ACORD 125</p>
+          <p className="eyebrow">Carrier Submission Package · {currentAdapter.formType}</p>
           <h1>Application Packaging & Submission Snapshot</h1>
           <p className="lede">
-            Adapter transforms canonical application state into standard ACORD 125 structures with an immutable audit hash.
+            Versioned adapter transforms canonical application state into standard ACORD structures with an immutable audit hash.
           </p>
         </div>
         <div className="button-row">
@@ -200,13 +206,43 @@ export const BrokerFormsPage = () => {
           <button
             className="button"
             type="button"
-            onClick={() => void markGenerated()}
+            onClick={() => void markGenerated(selectedAdapterId)}
             disabled={!readiness.ready}
           >
             Generate Immutable Snapshot
           </button>
         </div>
       </div>
+
+      <SurfaceCard title="Target Carrier Form & Adapter Edition" eyebrow="Adapter Registry (Sensible Pattern)">
+        <div className="split" style={{ alignItems: 'center' }}>
+          <div>
+            <label style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+              Select ACORD Standard Form Edition:
+              <select
+                className="input"
+                style={{ marginTop: '0.5rem', minWidth: '320px' }}
+                value={selectedAdapterId}
+                onChange={(e) => setSelectedAdapterId(e.target.value)}
+              >
+                {availableAdapters.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.formType} ({a.edition}) — {a.description}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="muted" style={{ marginTop: '0.5rem' }}>
+              Selected: <strong>{currentAdapter.description}</strong> · ID: <code>{currentAdapter.id}</code>
+            </p>
+          </div>
+          <div className="pill-row">
+            <span className="pill pill--active">{currentAdapter.formType}</span>
+            <span className="pill">Edition: {currentAdapter.edition}</span>
+            <span className="pill">Deterministic Mapping</span>
+          </div>
+        </div>
+      </SurfaceCard>
 
       {!readiness.ready ? (
         <div className="surface-card" style={{ borderLeft: '4px solid #f59e0b', padding: '1rem' }}>
@@ -225,14 +261,14 @@ export const BrokerFormsPage = () => {
         </div>
       )}
 
-      <SurfaceCard title="Mapping Readiness Matrix" eyebrow="ACORD 125 Mapping Engine">
+      <SurfaceCard title="Mapping Readiness Matrix" eyebrow={`${currentAdapter.formType} (${currentAdapter.edition}) Mapping Engine`}>
         <div className="hero-stats">
           <div><strong>{acordPreview.mappedCount}/{acordPreview.rows.length}</strong><span>Mapped Fields</span></div>
           <div><strong>{acordPreview.missingCount}</strong><span>Missing</span></div>
           <div><strong>{acordPreview.reviewRequiredCount}</strong><span>Review Required</span></div>
         </div>
         <p className="muted">
-          Generation creates an immutable versioned snapshot. ACORD generation is a packaging step and does not imply binding or carrier submission.
+          Generation creates an immutable versioned snapshot stamped with <code>{currentAdapter.id}</code>. ACORD generation is a packaging step and does not imply binding or carrier submission.
         </p>
       </SurfaceCard>
 

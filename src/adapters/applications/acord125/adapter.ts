@@ -158,3 +158,53 @@ export const buildAcord125Preview = (application: ApplicationRecord): AcordPrevi
       : 'Generate Application to refresh the ACORD 125 mapping preview.',
   }
 }
+
+export const acord125_2016_03_Adapter = {
+  id: 'acord-125:2016-03',
+  formType: 'ACORD 125',
+  edition: '2016/03',
+  lineOfBusiness: 'Commercial Insurance',
+  description: 'ACORD 125 Commercial Insurance Application (Standard Edition 03/2016)',
+  mappings: mappingDefinitions,
+  buildPreview: buildAcord125Preview,
+}
+
+// 2014-12 edition mapping variant
+const mappingDefinitions2014: MappingDefinition[] = mappingDefinitions.map((m) => {
+  if (m.canonicalField === 'application.desiredEffectiveDate') {
+    return {
+      ...m,
+      targetField: 'ACORD125_2014.Policy.EffectiveDate',
+    }
+  }
+  return m
+})
+
+export const acord125_2014_12_Adapter = {
+  id: 'acord-125:2014-12',
+  formType: 'ACORD 125',
+  edition: '2014/12',
+  lineOfBusiness: 'Commercial Insurance',
+  description: 'ACORD 125 Commercial Insurance Application (Legacy Edition 12/2014)',
+  mappings: mappingDefinitions2014,
+  buildPreview: (application: ApplicationRecord): AcordPreview => {
+    const definition = getApplicationDefinition(application.definitionId, application.definitionVersion)
+    const readiness = calculateReadiness(application, definition)
+    const rows = mappingDefinitions2014.map((mapping) => buildMappingRow(application, mapping, readiness))
+    const mappedCount = rows.filter((row) => row.status === 'mapped').length
+    const missingCount = rows.filter((row) => row.status === 'missing').length
+    const reviewRequiredCount = rows.filter((row) => row.status === 'review_required').length
+
+    return {
+      status: application.generatedAt ? 'Generated' : 'Ready for preview',
+      mappedCount,
+      missingCount,
+      reviewRequiredCount,
+      rows,
+      generatedPreview: application.generatedAt
+        ? `ACORD 125 (2014/12) representation generated for ${application.profile.business.legalName} on ${new Date(application.generatedAt).toLocaleString()}.`
+        : 'Generate Application to refresh the ACORD 125 (2014/12) mapping preview.',
+    }
+  },
+}
+

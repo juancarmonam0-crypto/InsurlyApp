@@ -27,6 +27,7 @@ import {
 } from '../services/customerProfileService'
 import { createNewApplicationFromProfile, prefillApplicationFromProfile } from '../services/profileMappingEngine'
 import { processDocument } from '../services/documents/documentProcessingService'
+import { uploadDocumentFile } from '../services/documents/documentUploadService'
 import { AppStateContext, type AppStateValue } from './AppStateContext'
 
 const createSeedApplication = () => structuredClone(demoApplication)
@@ -138,6 +139,27 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       persistenceMode: persistenceSummary.mode,
       persistenceState,
       persistenceError,
+      uploadDocument: async (file: File, categoryHint) => {
+        const uploadResult = await uploadDocumentFile({
+          file,
+          agencyId: application.agency_id,
+          applicationId: application.id,
+          customerId: application.customer_id,
+          categoryHint,
+        })
+        if (uploadResult.success && uploadResult.document) {
+          const updatedDocs = [uploadResult.document, ...application.profile.documents]
+          const updatedApp: ApplicationRecord = {
+            ...application,
+            profile: {
+              ...application.profile,
+              documents: updatedDocs,
+            },
+          }
+          updateFromApplication(updatedApp)
+        }
+        return uploadResult
+      },
       processDocuments: () => updateFromApplication(processDocumentIntake(application)),
       processDocumentWithAI: async (documentId: string) => {
         const res = await processDocument({ documentId, application })
@@ -165,8 +187,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       resolveConflict: (conflictId, action, correctedValue) =>
         updateFromApplication(resolveApplicationConflict(application, conflictId, action, correctedValue)),
       markBrokerVerified: () => updateFromApplication(verifyApplication(application)),
-      markGenerated: async () => {
-        const result = prepareApplicationPackage(application, 'broker-demo-user')
+      markGenerated: async (adapterId?: string) => {
+        const result = prepareApplicationPackage(application, 'broker-demo-user', adapterId)
         if (!result.success) {
           updateFromApplication(application)
           return

@@ -6,6 +6,7 @@ import type {
   ExtractedCandidateFact,
 } from '../../domain/types'
 import { DemoExtractionProvider, type DocumentExtractionProvider } from './demoExtractionProvider'
+import { RealExtractionProvider } from './realExtractionProvider'
 import { validateExtractionResult } from './extractionContract'
 import { ingestDocumentExtraction } from './documentIngestionEngine'
 
@@ -27,10 +28,17 @@ export interface DocumentProcessingResult {
   error?: string
 }
 
+export const getExtractionProviderForDocument = (document: DocumentRecord): DocumentExtractionProvider => {
+  if (document.source === 'uploaded') {
+    return new RealExtractionProvider()
+  }
+  return new DemoExtractionProvider()
+}
+
 export const processDocument = async ({
   documentId,
   application,
-  provider = new DemoExtractionProvider(),
+  provider,
 }: ProcessDocumentOptions): Promise<DocumentProcessingResult> => {
   const targetDoc = application.profile.documents.find((doc) => doc.id === documentId)
 
@@ -55,9 +63,11 @@ export const processDocument = async ({
     }
   }
 
+  const effectiveProvider = provider || getExtractionProviderForDocument(targetDoc)
+
   try {
     // 1. Classification
-    const classification = await provider.classifyDocument(targetDoc)
+    const classification = await effectiveProvider.classifyDocument(targetDoc)
     const category = targetDoc.category || classification.category
 
     const classifyingDoc: DocumentRecord = {
@@ -67,7 +77,7 @@ export const processDocument = async ({
     }
 
     // 2. Extraction
-    const extractionResult = await provider.extractDocument(classifyingDoc)
+    const extractionResult = await effectiveProvider.extractDocument(classifyingDoc)
 
     // 3. Validation
     const validation = validateExtractionResult(extractionResult)

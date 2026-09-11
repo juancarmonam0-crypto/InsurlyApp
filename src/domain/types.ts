@@ -227,6 +227,8 @@ export interface DocumentRecord {
   failureReason?: string
   storagePath?: string
   mimeType?: string
+  fileSize?: number
+  source?: 'uploaded' | 'demo'
   metadata?: Record<string, string | number | boolean>
   extractionSummary?: DocumentExtractionSummary
 }
@@ -416,6 +418,8 @@ export interface ApplicationSnapshotPayload {
   customerId: string
   definitionId: string
   definitionVersion: number
+  adapterId?: string
+  adapterVersion?: string
   lineOfBusiness: string
   status: ApplicationStatus
   completion: number
@@ -437,6 +441,8 @@ export interface ApplicationSnapshotRecord {
   application_id: string
   applicationDefinitionId: string
   applicationDefinitionVersion: number
+  adapterId?: string
+  adapterVersion?: string
   snapshotHash: string
   createdAt: string
   createdBy: string

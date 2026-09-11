@@ -4,6 +4,8 @@ import type {
   ApplicationSnapshotRecord,
   ConflictResolutionType,
   CustomerRecord,
+  DocumentCategory,
+  DocumentRecord,
   FieldValue,
   PersistenceMode,
   PersistenceState,
@@ -23,6 +25,7 @@ export interface AppStateValue {
   persistenceMode: PersistenceMode
   persistenceState: PersistenceState
   persistenceError?: string
+  uploadDocument: (file: File, categoryHint?: DocumentCategory) => Promise<{ success: boolean; document?: DocumentRecord; error?: string }>
   processDocuments: () => void | Promise<void>
   processDocumentWithAI: (documentId: string) => Promise<DocumentProcessingResult>
   answerWizardQuestion: (field: string, value: FieldValue) => void | Promise<void>
@@ -31,7 +34,7 @@ export interface AppStateValue {
   confirmRevenueChange: () => void | Promise<void>
   resolveConflict: (conflictId: string, action: ConflictResolutionType, correctedValue?: FieldValue) => void | Promise<void>
   markBrokerVerified: () => void | Promise<void>
-  markGenerated: () => void | Promise<void>
+  markGenerated: (adapterId?: string) => void | Promise<void>
   updateCustomerProfileFact: (fact: ProfileFactMetadata) => void | Promise<void>
   applyProfilePrefill: () => void | Promise<void>
   startNewApplicationForCustomer: (definitionId: string, version: number) => void | Promise<void>

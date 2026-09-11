@@ -9,6 +9,7 @@ import type {
 import { getApplicationDefinition } from '../../domain/applicationDefinitions'
 import { calculateReadiness } from './readinessEngine'
 import { buildAcord125Preview } from '../../adapters/applications/acord125/adapter'
+import { getApplicationAdapter, findAdapterForLineOfBusiness } from '../../adapters/applications/registry'
 import { markGenerated } from './workflow'
 
 const stableStringify = (value: unknown): string => {
@@ -120,14 +121,20 @@ export const createApplicationSnapshot = (
   readiness: ReadinessResult,
   acordPreview: AcordPreview,
   createdBy = 'broker-demo-user',
+  adapterId?: string,
 ) => {
   const createdAt = application.generatedAt ?? new Date().toISOString()
+  const effectiveAdapterId = adapterId ?? 'acord-125:2016-03'
+  const adapter = getApplicationAdapter(effectiveAdapterId)
+
   const payload: ApplicationSnapshotPayload = {
     applicationId: application.id,
     agencyId: application.agency_id,
     customerId: application.customerId,
     definitionId: application.definitionId,
     definitionVersion: application.definitionVersion,
+    adapterId: adapter.id,
+    adapterVersion: adapter.edition,
     lineOfBusiness: application.lineOfBusiness,
     status: application.status,
     completion: application.completion,
@@ -154,6 +161,8 @@ export const createApplicationSnapshot = (
     application_id: application.id,
     applicationDefinitionId: application.definitionId,
     applicationDefinitionVersion: application.definitionVersion,
+    adapterId: adapter.id,
+    adapterVersion: adapter.edition,
     snapshotHash: hashSnapshotPayload(payload),
     createdAt,
     createdBy,
@@ -179,6 +188,7 @@ export type PreparationResult =
 export const prepareApplicationPackage = (
   application: ApplicationRecord,
   createdBy = 'broker-pilot-user',
+  preferredAdapterId?: string,
 ): PreparationResult => {
   const definition = getApplicationDefinition(application.definitionId, application.definitionVersion)
   const readiness = calculateReadiness(application, definition)
@@ -193,8 +203,11 @@ export const prepareApplicationPackage = (
   }
 
   const generatedApplication = markGenerated(application)
-  const acordPreview = buildAcord125Preview(generatedApplication)
-  const snapshot = createApplicationSnapshot(generatedApplication, readiness, acordPreview, createdBy)
+  const adapter = preferredAdapterId
+    ? getApplicationAdapter(preferredAdapterId)
+    : findAdapterForLineOfBusiness(application.lineOfBusiness)
+  const acordPreview = adapter.buildPreview(generatedApplication)
+  const snapshot = createApplicationSnapshot(generatedApplication, readiness, acordPreview, createdBy, adapter.id)
 
   return {
     success: true,
