@@ -63,31 +63,35 @@ const LandingPage = () => {
   )
 }
 
-const StartApplicationPage = () => (
-  <div className="stack-lg">
-    <div className="page-header">
-      <div>
-        <p className="eyebrow">Start your application</p>
-        <h1>Choose the channel that matches the customer</h1>
-        <p className="lede">All three experiences feed the same normalized profile, missing-info engine, and broker workflow.</p>
+const StartApplicationPage = () => {
+  const { application } = useAppState()
+
+  return (
+    <div className="stack-lg">
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">Start your application</p>
+          <h1>Choose the channel that matches the customer</h1>
+          <p className="lede">All three experiences feed the same normalized profile, missing-info engine, and broker workflow.</p>
+        </div>
+      </div>
+      <div className="grid three-up">
+        <SurfaceCard title="Continue with ChatGPT" eyebrow="Placeholder experience">
+          <p className="muted">Conversational intake will plug into future LLM services behind a stable service interface.</p>
+          <Link className="button button--secondary" to={`/customer/applications/${application.id}/overview`}>Open workspace</Link>
+        </SurfaceCard>
+        <SurfaceCard title="Upload Documents" eyebrow="Fastest path for renewals">
+          <p className="muted">Current policy, prior ACORDs, loss runs, business docs, and schedules feed document extraction services later.</p>
+          <Link className="button" to={`/customer/applications/${application.id}/documents`}>Upload CurrentPolicy.pdf</Link>
+        </SurfaceCard>
+        <SurfaceCard title="Step-by-Step Assistant" eyebrow="Smart Wizard">
+          <p className="muted">DB-driven question metadata supports conditional logic, save/resume, and field skipping.</p>
+          <Link className="button button--secondary" to={`/customer/applications/${application.id}/wizard`}>Start wizard</Link>
+        </SurfaceCard>
       </div>
     </div>
-    <div className="grid three-up">
-      <SurfaceCard title="Continue with ChatGPT" eyebrow="Placeholder experience">
-        <p className="muted">Conversational intake will plug into future LLM services behind a stable service interface.</p>
-        <Link className="button button--secondary" to="/customer/applications/nexo/overview">Open workspace</Link>
-      </SurfaceCard>
-      <SurfaceCard title="Upload Documents" eyebrow="Fastest path for renewals">
-        <p className="muted">Current policy, prior ACORDs, loss runs, business docs, and schedules feed document extraction services later.</p>
-        <Link className="button" to="/customer/applications/nexo/documents">Upload CurrentPolicy.pdf</Link>
-      </SurfaceCard>
-      <SurfaceCard title="Step-by-Step Assistant" eyebrow="Smart Wizard">
-        <p className="muted">DB-driven question metadata supports conditional logic, save/resume, and field skipping.</p>
-        <Link className="button button--secondary" to="/customer/applications/nexo/wizard">Start wizard</Link>
-      </SurfaceCard>
-    </div>
-  </div>
-)
+  )
+}
 
 const AppRoutes = () => (
   <BrowserRouter>
@@ -95,7 +99,7 @@ const AppRoutes = () => (
       <Route element={<AppShell />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/start" element={<StartApplicationPage />} />
-        <Route path="/customer/applications/nexo" element={<CustomerLayout />}>
+        <Route path="/customer/applications/:applicationId" element={<CustomerLayout />}>
           <Route path="overview" element={<CustomerOverviewPage />} />
           <Route path="business-information" element={<CustomerOverviewPage />} />
           <Route path="people" element={<CustomerOverviewPage />} />
@@ -108,9 +112,9 @@ const AppRoutes = () => (
           <Route path="review" element={<CustomerReviewPage />} />
         </Route>
         <Route path="/broker/dashboard" element={<BrokerDashboardPage />} />
-        <Route path="/broker/customers/nexo" element={<BrokerCustomerProfilePage />} />
-        <Route path="/broker/applications/nexo" element={<BrokerApplicationPage />} />
-        <Route path="/broker/applications/nexo/forms" element={<BrokerFormsPage />} />
+        <Route path="/broker/customers/:customerId" element={<BrokerCustomerProfilePage />} />
+        <Route path="/broker/applications/:applicationId" element={<BrokerApplicationPage />} />
+        <Route path="/broker/applications/:applicationId/forms" element={<BrokerFormsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

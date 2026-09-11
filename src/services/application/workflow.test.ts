@@ -25,6 +25,7 @@ const completeRequiredQuestions = () => {
   let application = createApplication()
   application = answerRequirement(application, 'business.yearsInBusiness', 6)
   application = answerRequirement(application, 'business.fein', '92-1845601')
+  application = answerRequirement(application, 'application.desiredEffectiveDate', '2027-01-01')
   application = answerRequirement(application, 'currentInsurance.effectiveDate', '2027-01-01')
   return application
 }
@@ -52,9 +53,9 @@ describe('requirements and wizard', () => {
     const questions = getWizardQuestions(application, getDefinition(application))
 
     expect(questions.map((question) => question.canonicalField)).toEqual([
-      'business.yearsInBusiness',
       'business.fein',
-      'currentInsurance.effectiveDate',
+      'business.yearsInBusiness',
+      'application.desiredEffectiveDate',
     ])
     expect(questions.some((question) => question.canonicalField === 'business.annualRevenue')).toBe(false)
   })
@@ -127,7 +128,7 @@ describe('readiness and status', () => {
       'business.legalName',
       'business.annualRevenue',
       'business.employeeCount',
-      'currentInsurance.effectiveDate',
+      'application.desiredEffectiveDate',
     ])
     expect(application.status).toBe('customer_review')
   })

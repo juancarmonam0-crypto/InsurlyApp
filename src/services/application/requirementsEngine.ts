@@ -12,7 +12,7 @@ import { getFieldValue, hasMeaningfulValue } from './fieldAccess'
 const getFieldState = (application: ApplicationRecord, canonicalField: string): ApplicationFieldState | undefined =>
   application.fieldStates.find((fieldState) => fieldState.canonicalField === canonicalField)
 
-const isApplicable = (application: ApplicationRecord, requirement: RequirementDefinition) => {
+export const evaluateApplicability = (requirement: RequirementDefinition, application: ApplicationRecord) => {
   if (!requirement.applicability) return true
   const currentValue = getFieldValue(application, requirement.applicability.field)
   return currentValue === requirement.applicability.equals
@@ -22,7 +22,7 @@ export const evaluateRequirement = (
   application: ApplicationRecord,
   requirement: RequirementDefinition,
 ): RequirementEvaluation => {
-  const applicable = isApplicable(application, requirement)
+  const applicable = evaluateApplicability(requirement, application)
   const fieldState = getFieldState(application, requirement.canonicalField)
   const selectedValue = fieldState?.selectedValue ?? getFieldValue(application, requirement.canonicalField)
   const satisfied = applicable ? hasMeaningfulValue(selectedValue) : true

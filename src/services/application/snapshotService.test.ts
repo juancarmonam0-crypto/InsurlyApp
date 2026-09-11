@@ -18,6 +18,7 @@ const readyApplication = () => {
   let application = recalculateApplication(structuredClone(demoApplication))
   application = answerRequirement(application, 'business.yearsInBusiness', 6)
   application = answerRequirement(application, 'business.fein', '92-1845601')
+  application = answerRequirement(application, 'application.desiredEffectiveDate', '2027-01-01')
   application = answerRequirement(application, 'currentInsurance.effectiveDate', '2027-01-01')
   application = confirmCustomerReview(application)
   application = verifyApplication(application)
@@ -55,7 +56,7 @@ describe('snapshot service', () => {
 
     customer.profile.business.legalName = 'Changed Customer Name LLC'
 
-    expect(snapshot.snapshot.profile.business.legalName).toBe('Nexo Rental Solutions LLC')
+    expect(snapshot.snapshot.profile.business.legalName).toBe('Cedar Ridge Services LLC')
   })
 
   test('snapshot preserves provenance and resolved conflicts', () => {

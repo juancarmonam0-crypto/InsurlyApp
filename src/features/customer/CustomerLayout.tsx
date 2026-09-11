@@ -3,20 +3,20 @@ import { ProgressBar } from '../../components/ProgressBar'
 import { StatusBadge } from '../../components/StatusBadge'
 import { useAppState } from '../../state/useAppState'
 
-const sections = [
-  { label: 'Overview', to: '/customer/applications/nexo/overview' },
-  { label: 'Business Information', to: '/customer/applications/nexo/business-information' },
-  { label: 'People', to: '/customer/applications/nexo/people' },
-  { label: 'Locations', to: '/customer/applications/nexo/locations' },
-  { label: 'Vehicles/Equipment', to: '/customer/applications/nexo/vehicles-equipment' },
-  { label: 'Current Insurance', to: '/customer/applications/nexo/current-insurance' },
-  { label: 'Loss History', to: '/customer/applications/nexo/loss-history' },
-  { label: 'Documents', to: '/customer/applications/nexo/documents' },
-  { label: 'Review', to: '/customer/applications/nexo/review' },
-]
-
 export const CustomerLayout = () => {
   const { application } = useAppState()
+
+  const sections = [
+    { label: 'Overview', to: `/customer/applications/${application.id}/overview` },
+    { label: 'Business Information', to: `/customer/applications/${application.id}/business-information` },
+    { label: 'People', to: `/customer/applications/${application.id}/people` },
+    { label: 'Locations', to: `/customer/applications/${application.id}/locations` },
+    { label: 'Vehicles/Equipment', to: `/customer/applications/${application.id}/vehicles-equipment` },
+    { label: 'Current Insurance', to: `/customer/applications/${application.id}/current-insurance` },
+    { label: 'Loss History', to: `/customer/applications/${application.id}/loss-history` },
+    { label: 'Documents', to: `/customer/applications/${application.id}/documents` },
+    { label: 'Review', to: `/customer/applications/${application.id}/review` },
+  ]
 
   return (
     <div className="workspace-grid">

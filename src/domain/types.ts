@@ -19,6 +19,7 @@ export type SourceType =
   | 'existing_profile'
   | 'broker_entry'
   | 'previous_application'
+  | 'application_promotion'
 
 export type ProfileEntityKind =
   | 'customer'
@@ -279,6 +280,12 @@ export interface RequirementDefinition {
     field: string
     equals: FieldValue
   }
+  sectionOrder?: number
+  questionOrder?: number
+  helperText?: string
+  placeholder?: string
+  options?: { label: string; value: string | number | boolean }[]
+  profileReusable?: boolean
 }
 
 export interface ApplicationDefinition {

@@ -53,7 +53,10 @@ const syncCustomerFromApplication = (customer: CustomerRecord, application: Appl
 
 const terminalStatuses = new Set(['submitted', 'quoted', 'bound', 'declined', 'closed'])
 
-import { setProfileFact } from '../services/customerProfileService'
+import {
+  promoteConfirmedApplicationFactsToProfile,
+  setProfileFact,
+} from '../services/customerProfileService'
 import { createNewApplicationFromProfile, prefillApplicationFromProfile } from '../services/profileMappingEngine'
 import type { ProfileFactMetadata } from '../domain/types'
 
@@ -148,7 +151,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         setSnapshots([])
         setPersistenceState(persistenceSummary.state === 'error' ? 'error' : 'ready')
       },
-      confirmCustomerReview: () => updateFromApplication(confirmCustomerReview(application)),
+      confirmCustomerReview: () => {
+        const confirmedApp = confirmCustomerReview(application)
+        updateFromApplication(confirmedApp)
+        setCustomer((currentCustomer) =>
+          promoteConfirmedApplicationFactsToProfile(currentCustomer, confirmedApp)
+        )
+      },
       confirmRevenueChange: () => updateFromApplication(applyCustomerReviewChange(application, 'business.annualRevenue', 150000)),
       resolveConflict: (conflictId, action, correctedValue) =>
         updateFromApplication(resolveApplicationConflict(application, conflictId, action, correctedValue)),

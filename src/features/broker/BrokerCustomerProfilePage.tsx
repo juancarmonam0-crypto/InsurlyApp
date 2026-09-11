@@ -67,7 +67,7 @@ export const BrokerCustomerProfilePage = () => {
     startNewApplicationForCustomer(selectedDefinition.id, selectedDefinition.version)
     setNewApplicationNotice(`Started new ${selectedDefinition.lineOfBusiness} application prefilled from customer profile!`)
     setTimeout(() => {
-      navigate('/broker/applications/nexo')
+      navigate(`/broker/applications/${application.id}`)
     }, 1200)
   }
 
@@ -372,7 +372,7 @@ export const BrokerCustomerProfilePage = () => {
                 <p className="muted">Status: {application.status} · Completion: {application.completion}%</p>
               </div>
               <div className="button-row">
-                <Link className="button button--secondary" to="/broker/applications/nexo">Open Active Application</Link>
+                <Link className="button button--secondary" to={`/broker/applications/${application.id}`}>Open Active Application</Link>
               </div>
             </div>
           </SurfaceCard>

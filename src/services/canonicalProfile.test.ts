@@ -53,7 +53,7 @@ describe('V0.4 Canonical Customer Profile & Knowledge Layer', () => {
 
     expect(facts.length).toBeGreaterThan(5)
     const legalNameFact = facts.find((f) => f.fieldKey === 'business.legalName')
-    expect(legalNameFact?.value).toBe('Nexo Rental Solutions LLC')
+    expect(legalNameFact?.value).toBe('Cedar Ridge Services LLC')
 
     const revFact = facts.find((f) => f.fieldKey === 'business.annualRevenue')
     expect(revFact?.value).toBe(300000)

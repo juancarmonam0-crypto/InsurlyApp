@@ -23,7 +23,7 @@ export interface AppStateValue {
   persistenceState: PersistenceState
   persistenceError?: string
   processDocuments: () => void | Promise<void>
-  answerWizardQuestion: (field: string, value: string | number) => void | Promise<void>
+  answerWizardQuestion: (field: string, value: FieldValue) => void | Promise<void>
   resetDemo: () => void | Promise<void>
   confirmCustomerReview: () => void | Promise<void>
   confirmRevenueChange: () => void | Promise<void>

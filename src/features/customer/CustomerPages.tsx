@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ProgressBar } from '../../components/ProgressBar'
 import { StatusBadge } from '../../components/StatusBadge'
@@ -6,6 +7,8 @@ import { useAppState } from '../../state/useAppState'
 import { getWizardQuestions } from '../../services/applicationEngine'
 import { getApplicationDefinition } from '../../domain/applicationDefinitions'
 import { getApplicableRequirements } from '../../services/application/requirementsEngine'
+import { buildWizardPlan } from '../../services/wizard/wizardService'
+import type { FieldValue } from '../../domain/types'
 
 const sectionMap: Record<string, { title: string; summary: string }> = {
   overview: {
@@ -55,7 +58,7 @@ export const CustomerOverviewPage = () => {
             <p className="eyebrow">{section.title}</p>
             <h2>{section.summary}</h2>
           </div>
-          <Link className="button button--secondary" to="/customer/applications/nexo/wizard">
+          <Link className="button button--secondary" to={`/customer/applications/${application.id}/wizard`}>
             Continue smart wizard
           </Link>
         </div>
@@ -80,7 +83,7 @@ export const CustomerOverviewPage = () => {
           <h2>{application.customerName} · {application.lineOfBusiness}</h2>
           <p className="lede">The customer can move between document intake, wizard completion, and review without re-entering known information.</p>
         </div>
-        <Link className="button" to="/customer/applications/nexo/documents">
+        <Link className="button" to={`/customer/applications/${application.id}/documents`}>
           Continue intake
         </Link>
       </div>
@@ -120,9 +123,9 @@ export const CustomerOverviewPage = () => {
             <li>Review material declarations before the broker verifies the application.</li>
           </ul>
           <div className="button-row">
-            <Link className="button button--secondary" to="/customer/applications/nexo/documents">Upload documents</Link>
-            <Link className="button button--secondary" to="/customer/applications/nexo/wizard">Open wizard</Link>
-            <Link className="button button--secondary" to="/customer/applications/nexo/review">Review summary</Link>
+            <Link className="button button--secondary" to={`/customer/applications/${application.id}/documents`}>Upload documents</Link>
+            <Link className="button button--secondary" to={`/customer/applications/${application.id}/wizard`}>Open wizard</Link>
+            <Link className="button button--secondary" to={`/customer/applications/${application.id}/review`}>Review summary</Link>
           </div>
         </SurfaceCard>
       </div>
@@ -176,31 +179,44 @@ export const DocumentIntakePage = () => {
           ))}
         </div>
       </SurfaceCard>
-      <Link className="button button--secondary" to="/customer/applications/nexo/wizard">Continue to smart wizard</Link>
+      <Link className="button button--secondary" to={`/customer/applications/${application.id}/wizard`}>Continue to smart wizard</Link>
     </div>
   )
 }
 
 export const SmartWizardPage = () => {
   const { application, answerWizardQuestion } = useAppState()
-  const questions = getWizardQuestions(application)
-  const current = questions[0]
+  const plan = buildWizardPlan(application)
 
-  const handleAnswer = () => {
-    if (!current) return
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
+  const currentQuestion = plan.unresolvedQuestions[activeQuestionIndex] ?? plan.unresolvedQuestions[0]
 
-    if (current.canonicalField === 'business.yearsInBusiness') {
-      answerWizardQuestion(current.canonicalField, 6)
-      return
+  const [questionInputMap, setQuestionInputMap] = useState<Record<string, FieldValue>>({})
+  const inputValue = currentQuestion
+    ? questionInputMap[currentQuestion.id] ?? currentQuestion.currentValue ?? ''
+    : ''
+
+  const handleInputChange = (val: FieldValue) => {
+    if (!currentQuestion) return
+    setQuestionInputMap((prev) => ({ ...prev, [currentQuestion.id]: val }))
+  }
+
+  const handleSaveAndContinue = () => {
+    if (!currentQuestion) return
+
+    let parsedValue: FieldValue = inputValue
+    if (currentQuestion.inputType === 'number' || currentQuestion.inputType === 'currency') {
+      parsedValue = Number(inputValue) || 0
+    } else if (currentQuestion.inputType === 'boolean') {
+      parsedValue = String(inputValue) === 'true' || inputValue === true
     }
 
-    if (current.canonicalField === 'business.fein') {
-      answerWizardQuestion(current.canonicalField, '92-1845601')
-      return
-    }
+    answerWizardQuestion(currentQuestion.canonicalField, parsedValue)
+  }
 
-    if (current.canonicalField === 'currentInsurance.effectiveDate') {
-      answerWizardQuestion(current.canonicalField, '2027-01-01')
+  const handlePrevious = () => {
+    if (activeQuestionIndex > 0) {
+      setActiveQuestionIndex((prev) => prev - 1)
     }
   }
 
@@ -210,7 +226,9 @@ export const SmartWizardPage = () => {
         <div>
           <p className="eyebrow">Smart wizard</p>
           <h2>Only ask what is still unresolved</h2>
-          <p className="lede">The requirement definition drives missing fields, question order, and completion from one metadata source.</p>
+          <p className="lede">
+            Missing fields, question order, and completion are dynamically derived from the application definition.
+          </p>
         </div>
         <div className="pill-row">
           <span className="pill">Skip known fields</span>
@@ -219,24 +237,173 @@ export const SmartWizardPage = () => {
         </div>
       </div>
 
-      <SurfaceCard title="Question renderer" eyebrow={current ? `${questions.length} question${questions.length === 1 ? '' : 's'} remaining` : 'Complete'}>
-        {current ? (
-          <div className="wizard-card">
-            <div className="split"><span>Step {1} of {questions.length}</span><span>{current.section}</span></div>
-            <ProgressBar value={application.completion} />
-            <h3>{current.label}</h3>
-            <p className="muted">{current.helperText}</p>
-            <div className="mock-input">Type: {current.type}</div>
+      <div className="card-grid">
+        <SurfaceCard
+          title="Application Progress"
+          eyebrow={`${plan.completedQuestionsCount} of ${plan.totalApplicableQuestions} completed`}
+        >
+          <div className="stack-sm">
+            <ProgressBar value={plan.progressPercentage} />
+            <p className="muted text-sm">{plan.progressPercentage}% complete</p>
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard
+          title="Sections Summary"
+          eyebrow={`${plan.sections.filter((s) => s.isComplete).length} of ${plan.sections.length} sections complete`}
+        >
+          <div className="pill-row">
+            {plan.sections.map((sec) => (
+              <span
+                key={sec.section}
+                className={`pill ${sec.isComplete ? 'pill--success' : ''}`}
+                style={{
+                  backgroundColor: sec.isComplete ? 'var(--color-success-tint, #eefdf2)' : undefined,
+                  color: sec.isComplete ? 'var(--color-success, #16a34a)' : undefined,
+                }}
+              >
+                {sec.section}: {sec.resolvedCount}/{sec.totalCount}
+              </span>
+            ))}
+          </div>
+        </SurfaceCard>
+      </div>
+
+      <SurfaceCard
+        title="Question renderer"
+        eyebrow={
+          plan.unresolvedQuestions.length > 0
+            ? `${plan.unresolvedQuestions.length} unresolved question${plan.unresolvedQuestions.length === 1 ? '' : 's'} remaining`
+            : 'Complete'
+        }
+      >
+        {currentQuestion ? (
+          <div className="wizard-card stack-md">
+            <div className="split">
+              <span>
+                Question {activeQuestionIndex + 1} of {plan.unresolvedQuestions.length}
+              </span>
+              <span className="pill">{currentQuestion.section}</span>
+            </div>
+
+            <div>
+              <h3>{currentQuestion.label}</h3>
+              {currentQuestion.helperText && (
+                <p className="muted" style={{ marginTop: '0.25rem' }}>
+                  {currentQuestion.helperText}
+                </p>
+              )}
+            </div>
+
+            <div className="pill-row" style={{ marginTop: '0.5rem' }}>
+              <span
+                className="pill"
+                style={{
+                  fontSize: '0.75rem',
+                  backgroundColor: currentQuestion.profileReusable ? '#eef4ff' : '#f3f4f6',
+                  color: currentQuestion.profileReusable ? '#1f6fff' : '#4b5563',
+                }}
+              >
+                {currentQuestion.profileReusable
+                  ? '✓ Updates reusable customer profile'
+                  : 'ℹ Application-only fact (policy specific)'}
+              </span>
+            </div>
+
+            <div className="form-group" style={{ margin: '1rem 0' }}>
+              {currentQuestion.inputType === 'select' || currentQuestion.options ? (
+                <select
+                  className="input"
+                  value={String(inputValue)}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                >
+                  <option value="">Select an option...</option>
+                  {currentQuestion.options?.map((opt) => (
+                    <option key={String(opt.value)} value={String(opt.value)}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : currentQuestion.inputType === 'boolean' ? (
+                <select
+                  className="input"
+                  value={String(inputValue)}
+                  onChange={(e) => handleInputChange(e.target.value === 'true')}
+                >
+                  <option value="">Select...</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              ) : currentQuestion.inputType === 'date' ? (
+                <input
+                  type="date"
+                  className="input"
+                  value={String(inputValue)}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                />
+              ) : currentQuestion.inputType === 'number' || currentQuestion.inputType === 'currency' ? (
+                <div style={{ position: 'relative' }}>
+                  {currentQuestion.inputType === 'currency' && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: '0.75rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#6b7280',
+                      }}
+                    >
+                      $
+                    </span>
+                  )}
+                  <input
+                    type="number"
+                    className="input"
+                    style={{ paddingLeft: currentQuestion.inputType === 'currency' ? '2rem' : undefined }}
+                    placeholder={currentQuestion.placeholder ?? '0'}
+                    value={String(inputValue)}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  className="input"
+                  placeholder={currentQuestion.placeholder ?? 'Enter value...'}
+                  value={String(inputValue)}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                />
+              )}
+            </div>
+
             <div className="button-row">
-              <button className="button button--secondary" type="button">Previous</button>
-              <button className="button" type="button" onClick={handleAnswer}>Save and continue</button>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={handlePrevious}
+                disabled={activeQuestionIndex === 0}
+              >
+                Previous
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={handleSaveAndContinue}
+                disabled={inputValue === '' || inputValue === undefined}
+              >
+                Save and continue
+              </button>
             </div>
           </div>
         ) : (
           <div className="stack-sm">
             <h3>All missing information collected</h3>
-            <p className="muted">The application now routes the customer into a concise review and confirmation step.</p>
-            <Link className="button" to="/customer/applications/nexo/review">Continue to customer review</Link>
+            <p className="muted">
+              All required fields for this commercial application have been collected. You can now review and confirm the material information.
+            </p>
+            <Link className="button" to={`/customer/applications/${application.id}/review`}>
+              Continue to customer review
+            </Link>
           </div>
         )}
       </SurfaceCard>

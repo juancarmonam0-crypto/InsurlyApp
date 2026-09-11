@@ -72,13 +72,174 @@ const accessors: Record<string, FieldAccessor> = {
       ? { ...application, profile: { ...application.profile, currentInsurance: { ...application.profile.currentInsurance, effectiveDate: value } } }
       : application,
   },
+  'application.desiredEffectiveDate': {
+    get: (application) => {
+      const fs = application.fieldStates.find((f) => f.canonicalField === 'application.desiredEffectiveDate')
+      if (fs?.selectedValue !== undefined) return fs.selectedValue
+      return application.profile.currentInsurance.effectiveDate
+    },
+    set: (application, value) => {
+      if (typeof value === 'string') {
+        const existingIndex = application.fieldStates.findIndex((f) => f.canonicalField === 'application.desiredEffectiveDate')
+        const updatedFieldStates = [...application.fieldStates]
+        if (existingIndex >= 0) {
+          updatedFieldStates[existingIndex] = { ...updatedFieldStates[existingIndex], selectedValue: value }
+        } else {
+          updatedFieldStates.push({
+            canonicalField: 'application.desiredEffectiveDate',
+            selectedValue: value,
+            customerConfirmed: false,
+            brokerVerified: false,
+            updatedAt: new Date().toISOString(),
+          })
+        }
+        return { ...application, fieldStates: updatedFieldStates }
+      }
+      return application
+    },
+  },
+  'vehicle.year': {
+    get: (application) => application.profile.vehicles[0]?.year,
+    set: (application, value) => typeof value === 'number' && application.profile.vehicles[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            vehicles: [{ ...application.profile.vehicles[0], year: value }, ...application.profile.vehicles.slice(1)],
+          },
+        }
+      : application,
+  },
+  'vehicle.make': {
+    get: (application) => application.profile.vehicles[0]?.make,
+    set: (application, value) => typeof value === 'string' && application.profile.vehicles[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            vehicles: [{ ...application.profile.vehicles[0], make: value }, ...application.profile.vehicles.slice(1)],
+          },
+        }
+      : application,
+  },
+  'vehicle.model': {
+    get: (application) => application.profile.vehicles[0]?.model,
+    set: (application, value) => typeof value === 'string' && application.profile.vehicles[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            vehicles: [{ ...application.profile.vehicles[0], model: value }, ...application.profile.vehicles.slice(1)],
+          },
+        }
+      : application,
+  },
+  'vehicle.vin': {
+    get: (application) => application.profile.vehicles[0]?.vin,
+    set: (application, value) => typeof value === 'string' && application.profile.vehicles[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            vehicles: [{ ...application.profile.vehicles[0], vin: value }, ...application.profile.vehicles.slice(1)],
+          },
+        }
+      : application,
+  },
+  'person.fullName': {
+    get: (application) => application.profile.people[0]?.fullName,
+    set: (application, value) => typeof value === 'string' && application.profile.people[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            people: [{ ...application.profile.people[0], fullName: value }, ...application.profile.people.slice(1)],
+          },
+        }
+      : application,
+  },
+  'location.addressLine1': {
+    get: (application) => application.profile.locations[0]?.addressLine1,
+    set: (application, value) => typeof value === 'string' && application.profile.locations[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            locations: [{ ...application.profile.locations[0], addressLine1: value }, ...application.profile.locations.slice(1)],
+          },
+        }
+      : application,
+  },
+  'location.city': {
+    get: (application) => application.profile.locations[0]?.city,
+    set: (application, value) => typeof value === 'string' && application.profile.locations[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            locations: [{ ...application.profile.locations[0], city: value }, ...application.profile.locations.slice(1)],
+          },
+        }
+      : application,
+  },
+  'location.state': {
+    get: (application) => application.profile.locations[0]?.state,
+    set: (application, value) => typeof value === 'string' && application.profile.locations[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            locations: [{ ...application.profile.locations[0], state: value }, ...application.profile.locations.slice(1)],
+          },
+        }
+      : application,
+  },
+  'location.postalCode': {
+    get: (application) => application.profile.locations[0]?.postalCode,
+    set: (application, value) => typeof value === 'string' && application.profile.locations[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            locations: [{ ...application.profile.locations[0], postalCode: value }, ...application.profile.locations.slice(1)],
+          },
+        }
+      : application,
+  },
 }
 
 export const getSupportedCanonicalFields = () => Object.keys(accessors)
 
-export const getFieldValue = (application: ApplicationRecord, canonicalField: string) => accessors[canonicalField]?.get(application)
+export const getFieldValue = (application: ApplicationRecord, canonicalField: string): FieldValue | undefined => {
+  const fieldState = application.fieldStates.find((fs) => fs.canonicalField === canonicalField)
+  if (fieldState?.selectedValue !== undefined) return fieldState.selectedValue
 
-export const setFieldValue = (application: ApplicationRecord, canonicalField: string, value: FieldValue) => accessors[canonicalField]?.set(application, value) ?? application
+  return accessors[canonicalField]?.get(application)
+}
+
+export const setFieldValue = (application: ApplicationRecord, canonicalField: string, value: FieldValue): ApplicationRecord => {
+  let updatedApp = accessors[canonicalField]?.set(application, value) ?? application
+
+  const existingFsIndex = updatedApp.fieldStates.findIndex((fs) => fs.canonicalField === canonicalField)
+  const updatedFieldStates = [...updatedApp.fieldStates]
+  if (existingFsIndex >= 0) {
+    updatedFieldStates[existingFsIndex] = {
+      ...updatedFieldStates[existingFsIndex],
+      selectedValue: value,
+      updatedAt: new Date().toISOString(),
+    }
+  } else {
+    updatedFieldStates.push({
+      canonicalField,
+      selectedValue: value,
+      customerConfirmed: false,
+      brokerVerified: false,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  return { ...updatedApp, fieldStates: updatedFieldStates }
+}
 
 export const hasMeaningfulValue = (value: FieldValue | undefined) => {
   if (value === undefined) return false

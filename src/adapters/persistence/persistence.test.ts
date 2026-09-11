@@ -121,8 +121,8 @@ describe('local persistence adapter', () => {
       fallbackWorkspace: tenantA,
     })
 
-    expect(loadedA.customer.displayName).toBe('Nexo Rental Solutions LLC')
-    expect(loadedA.application.id).toBe('app-nexo-rental-solutions')
+    expect(loadedA.customer.displayName).toBe('Cedar Ridge Services LLC')
+    expect(loadedA.application.id).toBe('app-cedar-ridge-services')
     expect(loadedA.application.agency_id).toBe('agency-insurly-demo')
   })
 

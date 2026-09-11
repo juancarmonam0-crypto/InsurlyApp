@@ -7,7 +7,7 @@ import { useAppState } from '../../state/useAppState'
 const brokerNav = ['Dashboard', 'Customers', 'Applications', 'Needs Review', 'Documents', 'Analytics', 'Settings']
 
 export const BrokerDashboardPage = () => {
-  const { application, readiness, persistenceMode, persistenceState } = useAppState()
+  const { application, customer, readiness, persistenceMode, persistenceState } = useAppState()
 
   return (
     <div className="stack-lg">
@@ -35,8 +35,8 @@ export const BrokerDashboardPage = () => {
           </div>
           <div className="button-row">
             <StatusBadge status={application.status} />
-            <Link className="button button--secondary" to="/broker/customers/nexo">View Customer Profile</Link>
-            <Link className="button" to="/broker/applications/nexo">Open application</Link>
+            <Link className="button button--secondary" to={`/broker/customers/${customer.id}`}>View Customer Profile</Link>
+            <Link className="button" to={`/broker/applications/${application.id}`}>Open application</Link>
           </div>
         </div>
       </SurfaceCard>
@@ -45,7 +45,7 @@ export const BrokerDashboardPage = () => {
 }
 
 export const BrokerApplicationPage = () => {
-  const { application, readiness, resolveConflict, markBrokerVerified, latestSnapshot, snapshots, persistenceMode, persistenceState, persistenceError } = useAppState()
+  const { application, customer, readiness, resolveConflict, markBrokerVerified, latestSnapshot, snapshots, persistenceMode, persistenceState, persistenceError } = useAppState()
 
   return (
     <div className="stack-lg">
@@ -57,8 +57,8 @@ export const BrokerApplicationPage = () => {
         </div>
         <div className="button-row">
           <StatusBadge status={application.status} />
-          <Link className="button button--secondary" to="/broker/customers/nexo">View Customer Profile</Link>
-          <Link className="button" to="/broker/applications/nexo/forms">Open forms</Link>
+          <Link className="button button--secondary" to={`/broker/customers/${customer.id}`}>View Customer Profile</Link>
+          <Link className="button" to={`/broker/applications/${application.id}/forms`}>Open forms</Link>
         </div>
       </div>
       <div className="grid two-up">

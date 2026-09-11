@@ -1,8 +1,8 @@
-import { commercialAcord125Definition } from '../../domain/applicationDefinitions'
+import { commercialAcord125DefinitionV2 } from '../../domain/applicationDefinitions'
 import type { AgencyConfig, ApplicationRecord, BrokerMetric, CustomerRecord } from '../../domain/types'
 
 const now = '2026-09-11T04:06:33.095Z'
-const buildDocumentStoragePath = (fileName: string) => `agency-insurly-demo/customer-nexo/app-nexo-rental-solutions/${fileName}`
+const buildDocumentStoragePath = (fileName: string) => `agency-insurly-demo/customer-cedar-ridge/app-cedar-ridge-services/${fileName}`
 
 export const agencyConfig: AgencyConfig = {
   id: 'agency-insurly-demo',
@@ -27,59 +27,59 @@ export const brokerMetrics: BrokerMetric[] = [
 ]
 
 export const demoCustomer: CustomerRecord = {
-  id: 'customer-nexo',
+  id: 'customer-cedar-ridge',
   agency_id: agencyConfig.id,
   type: 'business',
-  displayName: 'Nexo Rental Solutions LLC',
-  email: 'maya@nexorental.demo',
-  phone: '(512) 555-0198',
+  displayName: 'Cedar Ridge Services LLC',
+  email: 'sarah@cedarridge.demo',
+  phone: '(512) 555-0142',
   createdAt: now,
   updatedAt: now,
   profile: {
     agency_id: agencyConfig.id,
-    customer_id: 'customer-nexo',
+    customer_id: 'customer-cedar-ridge',
     preferredChannel: 'document_upload',
     business: {
       agency_id: agencyConfig.id,
-      legalName: 'Nexo Rental Solutions LLC',
+      legalName: 'Cedar Ridge Services LLC',
       entityType: 'Texas LLC',
       stateOfFormation: 'Texas',
       annualRevenue: 300000,
-      naicsCode: '532120',
+      naicsCode: '561730',
       employeeCount: 4,
-      description: 'Trailer and small equipment rental for contractors across Central Texas.',
+      description: 'Commercial landscaping, groundskeeping, and facility maintenance services.',
     },
     people: [
       {
         agency_id: agencyConfig.id,
         id: 'person-1',
-        fullName: 'Maya Delgado',
+        fullName: 'Sarah Jenkins',
         role: 'Managing Member',
-        email: 'maya@nexorental.demo',
-        phone: '(512) 555-0198',
+        email: 'sarah@cedarridge.demo',
+        phone: '(512) 555-0142',
       },
     ],
     locations: [
       {
         agency_id: agencyConfig.id,
         id: 'loc-1',
-        label: 'Primary Yard',
-        addressLine1: '1840 Commerce Yard Rd',
-        city: 'Round Rock',
+        label: 'Primary Office & Yard',
+        addressLine1: '1042 Industrial Pkwy',
+        city: 'Austin',
         state: 'TX',
-        postalCode: '78664',
-        occupancy: 'Fenced storage yard with small office',
+        postalCode: '78758',
+        occupancy: 'Office and equipment storage yard',
       },
     ],
     vehicles: [
       {
         agency_id: agencyConfig.id,
         id: 'veh-1',
-        year: 2022,
+        year: 2023,
         make: 'Ford',
         model: 'F-250',
         vin: '1FT7W2BT5NEA44192',
-        usage: 'Delivery and pickup of rental trailers',
+        usage: 'Service and equipment transport',
       },
     ],
     currentInsurance: {
@@ -94,7 +94,7 @@ export const demoCustomer: CustomerRecord = {
         agency_id: agencyConfig.id,
         id: 'loss-1',
         date: '2024-03-12',
-        description: 'Minor trailer fender claim while backing into yard.',
+        description: 'Minor mower fender damage while backing trailer into yard.',
         amount: 4200,
         status: 'Closed',
       },
@@ -102,9 +102,9 @@ export const demoCustomer: CustomerRecord = {
     documents: [
       {
         agency_id: agencyConfig.id,
-        customer_id: 'customer-nexo',
+        customer_id: 'customer-cedar-ridge',
         id: 'doc-1',
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         type: 'Current Policy',
         fileName: 'CurrentPolicy.pdf',
         status: 'uploading',
@@ -114,9 +114,9 @@ export const demoCustomer: CustomerRecord = {
       },
       {
         agency_id: agencyConfig.id,
-        customer_id: 'customer-nexo',
+        customer_id: 'customer-cedar-ridge',
         id: 'doc-2',
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         type: 'Previous ACORD App',
         fileName: 'PreviousAcord125.pdf',
         status: 'extracting',
@@ -126,9 +126,9 @@ export const demoCustomer: CustomerRecord = {
       },
       {
         agency_id: agencyConfig.id,
-        customer_id: 'customer-nexo',
+        customer_id: 'customer-cedar-ridge',
         id: 'doc-3',
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         type: 'Loss Runs',
         fileName: 'LossRuns.pdf',
         status: 'review_required',
@@ -138,9 +138,9 @@ export const demoCustomer: CustomerRecord = {
       },
       {
         agency_id: agencyConfig.id,
-        customer_id: 'customer-nexo',
+        customer_id: 'customer-cedar-ridge',
         id: 'doc-4',
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         type: 'Business Docs',
         fileName: 'TexasLLCFiling.pdf',
         status: 'complete',
@@ -150,9 +150,9 @@ export const demoCustomer: CustomerRecord = {
       },
       {
         agency_id: agencyConfig.id,
-        customer_id: 'customer-nexo',
+        customer_id: 'customer-cedar-ridge',
         id: 'doc-5',
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         type: 'Vehicle Schedule',
         fileName: 'VehicleSchedule.xlsx',
         status: 'processing',
@@ -166,12 +166,12 @@ export const demoCustomer: CustomerRecord = {
 
 export const demoApplication: ApplicationRecord = {
   agency_id: agencyConfig.id,
-  id: 'app-nexo-rental-solutions',
+  id: 'app-cedar-ridge-services',
   customerId: demoCustomer.id,
   customerName: demoCustomer.displayName,
-  lineOfBusiness: commercialAcord125Definition.lineOfBusiness,
-  definitionId: commercialAcord125Definition.id,
-  definitionVersion: commercialAcord125Definition.version,
+  lineOfBusiness: commercialAcord125DefinitionV2.lineOfBusiness,
+  definitionId: commercialAcord125DefinitionV2.id,
+  definitionVersion: commercialAcord125DefinitionV2.version,
   status: 'collecting_information',
   completion: 0,
   missingFields: [],
@@ -184,7 +184,7 @@ export const demoApplication: ApplicationRecord = {
   fieldStates: [
     {
       canonicalField: 'business.legalName',
-      selectedValue: 'Nexo Rental Solutions LLC',
+      selectedValue: 'Cedar Ridge Services LLC',
       selectedEvidenceId: 'prov-1',
       customerConfirmed: false,
       brokerVerified: false,
@@ -200,7 +200,7 @@ export const demoApplication: ApplicationRecord = {
     },
     {
       canonicalField: 'business.naicsCode',
-      selectedValue: '532120',
+      selectedValue: '561730',
       selectedEvidenceId: 'prov-3',
       customerConfirmed: false,
       brokerVerified: false,
@@ -226,7 +226,7 @@ export const demoApplication: ApplicationRecord = {
   profile: {
     agency_id: agencyConfig.id,
     customer_id: demoCustomer.id,
-    application_id: 'app-nexo-rental-solutions',
+    application_id: 'app-cedar-ridge-services',
     preferredChannel: demoCustomer.profile.preferredChannel,
     business: structuredClone(demoCustomer.profile.business),
     people: structuredClone(demoCustomer.profile.people),
@@ -239,10 +239,10 @@ export const demoApplication: ApplicationRecord = {
       {
         id: 'prov-1',
         agency_id: agencyConfig.id,
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         canonicalField: 'business.legalName',
         label: 'Legal Name',
-        value: 'Nexo Rental Solutions LLC',
+        value: 'Cedar Ridge Services LLC',
         sourceType: 'document_ai',
         sourceDocument: 'TexasLLCFiling.pdf',
         sourcePage: 1,
@@ -254,7 +254,7 @@ export const demoApplication: ApplicationRecord = {
       {
         id: 'prov-2',
         agency_id: agencyConfig.id,
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         canonicalField: 'business.annualRevenue',
         label: 'Annual Revenue',
         value: 300000,
@@ -269,10 +269,10 @@ export const demoApplication: ApplicationRecord = {
       {
         id: 'prov-3',
         agency_id: agencyConfig.id,
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         canonicalField: 'business.naicsCode',
         label: 'NAICS',
-        value: '532120',
+        value: '561730',
         sourceType: 'existing_profile',
         confidence: 0.94,
         customerConfirmed: false,
@@ -282,7 +282,7 @@ export const demoApplication: ApplicationRecord = {
       {
         id: 'prov-4',
         agency_id: agencyConfig.id,
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         canonicalField: 'business.employeeCount',
         label: 'Employees',
         value: 4,
@@ -297,7 +297,7 @@ export const demoApplication: ApplicationRecord = {
       {
         id: 'prov-5',
         agency_id: agencyConfig.id,
-        application_id: 'app-nexo-rental-solutions',
+        application_id: 'app-cedar-ridge-services',
         canonicalField: 'currentInsurance.carrierName',
         label: 'Current Carrier',
         value: 'Lone Star Mutual',

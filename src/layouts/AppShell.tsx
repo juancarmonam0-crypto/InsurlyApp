@@ -2,14 +2,14 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { agencyConfig } from '../data/mock/insurly'
 import { useAppState } from '../state/useAppState'
 
-const primaryNav = [
-  { label: 'Website', to: '/' },
-  { label: 'Customer Workspace', to: '/customer/applications/nexo/overview' },
-  { label: 'Broker Portal', to: '/broker/dashboard' },
-]
-
 export const AppShell = () => {
   const { application } = useAppState()
+
+  const primaryNav = [
+    { label: 'Website', to: '/' },
+    { label: 'Customer Workspace', to: `/customer/applications/${application.id}/overview` },
+    { label: 'Broker Portal', to: '/broker/dashboard' },
+  ]
 
   return (
     <div className="app-shell" style={{ ['--brand' as string]: agencyConfig.primaryColor, ['--brand-tint' as string]: agencyConfig.primaryTint }}>

@@ -1,4 +1,6 @@
 import type {
+  ApplicationDefinition,
+  ApplicationRecord,
   CustomerRecord,
   FieldValue,
   ProfileEntityKind,
@@ -10,6 +12,8 @@ import {
   normalizeCanonicalKey,
   normalizeCanonicalValue,
 } from '../domain/canonicalRegistry'
+import { getApplicationDefinition } from '../domain/applicationDefinitions'
+import { getFieldValue, hasMeaningfulValue } from './application/fieldAccess'
 
 export const normalizeProfileField = (fieldKey: string, value: FieldValue): FieldValue =>
   normalizeCanonicalValue(fieldKey, value)
@@ -208,3 +212,64 @@ export const setProfileFact = (customer: CustomerRecord, fact: ProfileFactMetada
 }
 
 export const getRegistryFieldDefinitions = () => CANONICAL_FIELD_REGISTRY
+
+export const promoteConfirmedApplicationFactsToProfile = (
+  customer: CustomerRecord,
+  application: ApplicationRecord,
+  definition?: ApplicationDefinition,
+): CustomerRecord => {
+  const activeDef =
+    definition ??
+    getApplicationDefinition(
+      application.definitionId ?? 'commercial-acord125',
+      application.definitionVersion ?? 2,
+    )
+
+  let updatedCustomer = { ...customer }
+
+  for (const req of activeDef.requirements) {
+    const isProfileReusable =
+      req.profileReusable !== undefined
+        ? req.profileReusable
+        : req.canonicalField.startsWith('business.') ||
+          req.canonicalField.startsWith('person.') ||
+          req.canonicalField.startsWith('location.') ||
+          req.canonicalField.startsWith('vehicle.')
+
+    if (!isProfileReusable) continue
+
+    const rawVal = getFieldValue(application, req.canonicalField)
+    if (!hasMeaningfulValue(rawVal) || rawVal === undefined) continue
+    const value: FieldValue = rawVal
+
+    const fieldState = application.fieldStates.find((fs) => fs.canonicalField === req.canonicalField)
+    const isConfirmed = fieldState?.customerConfirmed || fieldState?.brokerVerified || false
+
+    const fact: ProfileFactMetadata = {
+      id: `fact-${customer.id}-${req.canonicalField}`,
+      agency_id: customer.agency_id,
+      customer_id: customer.id,
+      entityType: req.canonicalField.startsWith('person.')
+        ? 'person'
+        : req.canonicalField.startsWith('location.')
+        ? 'location'
+        : req.canonicalField.startsWith('vehicle.')
+        ? 'vehicle'
+        : 'business',
+      entityId: '',
+      fieldKey: req.canonicalField,
+      value,
+      sourceType: 'application_promotion',
+      confidence: 1.0,
+      customerConfirmed: isConfirmed,
+      brokerVerified: fieldState?.brokerVerified ?? false,
+      updatedAt: fieldState?.updatedAt ?? new Date().toISOString(),
+      metadata: { label: req.label },
+    }
+
+    updatedCustomer = setProfileFact(updatedCustomer, fact)
+  }
+
+  return updatedCustomer
+}
+
