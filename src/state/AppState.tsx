@@ -60,6 +60,8 @@ import {
 import { createNewApplicationFromProfile, prefillApplicationFromProfile } from '../services/profileMappingEngine'
 import type { ProfileFactMetadata } from '../domain/types'
 
+import { processDocument } from '../services/documents/documentProcessingService'
+
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const seedWorkspace = useMemo(() => createSeedWorkspace(), [])
   const [application, setApplication] = useState<ApplicationRecord>(normalizeApplication(seedWorkspace.application))
@@ -143,6 +145,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       persistenceState,
       persistenceError,
       processDocuments: () => updateFromApplication(processDocumentIntake(application)),
+      processDocumentWithAI: async (documentId: string) => {
+        const res = await processDocument({ documentId, application })
+        if (res.success) {
+          updateFromApplication(res.application)
+        }
+        return res
+      },
       answerWizardQuestion: (field, value) => updateFromApplication(answerRequirement(application, field, value)),
       resetDemo: () => {
         const workspace = createSeedWorkspace()

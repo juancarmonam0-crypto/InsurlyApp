@@ -49,11 +49,69 @@ export interface ProfileFactMetadata {
 }
 
 export type DocumentStatus =
+  | 'uploaded'
   | 'uploading'
+  | 'classifying'
   | 'processing'
   | 'extracting'
   | 'review_required'
+  | 'processed'
   | 'complete'
+  | 'failed'
+
+export type DocumentCategory =
+  | 'current_policy'
+  | 'prior_acord_application'
+  | 'loss_runs'
+  | 'business_document'
+  | 'vehicle_schedule'
+  | 'unknown'
+
+export type CandidateFactStatus =
+  | 'valid'
+  | 'invalid'
+  | 'review_required'
+  | 'entity_resolution_required'
+  | 'unmapped'
+
+export interface ExtractedCandidateFact {
+  id: string
+  rawLabel: string
+  rawValue: FieldValue
+  proposedCanonicalField: string
+  canonicalField: string
+  entityType: ProfileEntityKind
+  entityId?: string
+  normalizedValue: FieldValue
+  confidence: number
+  page?: number
+  evidenceText?: string
+  extractionMethod?: string
+  warnings?: string[]
+  status: CandidateFactStatus
+}
+
+export interface DocumentExtractionResult {
+  documentId: string
+  documentType: DocumentCategory
+  classificationConfidence: number
+  fields: ExtractedCandidateFact[]
+  warnings: string[]
+  providerMetadata?: Record<string, string | number | boolean>
+}
+
+export interface DocumentExtractionSummary {
+  documentId: string
+  documentCategory: DocumentCategory
+  classificationConfidence: number
+  totalFactsFound: number
+  acceptedFactsCount: number
+  reviewRequiredCount: number
+  unmappedCount: number
+  conflictsCreatedCount: number
+  processedAt: string
+  warnings: string[]
+}
 
 export type ConflictStatus = 'open' | 'clarification_requested' | 'resolved'
 
@@ -161,12 +219,16 @@ export interface DocumentRecord {
   application_id?: string
   customer_id?: string
   type: string
+  category?: DocumentCategory
   fileName: string
   status: DocumentStatus
   uploadedAt: string
+  processedAt?: string
+  failureReason?: string
   storagePath?: string
   mimeType?: string
   metadata?: Record<string, string | number | boolean>
+  extractionSummary?: DocumentExtractionSummary
 }
 
 export interface FieldProvenance {

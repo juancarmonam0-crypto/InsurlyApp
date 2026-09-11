@@ -134,52 +134,127 @@ export const CustomerOverviewPage = () => {
 }
 
 export const DocumentIntakePage = () => {
-  const { application, processDocuments } = useAppState()
+  const { application, processDocuments, processDocumentWithAI } = useAppState()
+  const [processingDocId, setProcessingDocId] = useState<string | null>(null)
+
+  const handleProcessSingle = async (docId: string) => {
+    setProcessingDocId(docId)
+    try {
+      await processDocumentWithAI(docId)
+    } finally {
+      setProcessingDocId(null)
+    }
+  }
+
+  const handleProcessAll = async () => {
+    await processDocuments()
+  }
 
   return (
     <div className="stack-lg">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Document intake</p>
-          <h2>Upload documents and let Insurly prefill the canonical profile</h2>
-          <p className="lede">Simulated states move from Uploading → Processing → Extracting → Review Required/Complete.</p>
+          <p className="eyebrow">Document intelligence</p>
+          <h2>Upload insurance documents & extract candidate evidence</h2>
+          <p className="lede">
+            Insurly classifies documents, extracts normalized candidate facts with provenance, and pre-populates application state without overwriting customer-verified truth.
+          </p>
         </div>
-        <button className="button" type="button" onClick={processDocuments}>Process uploaded documents</button>
+        <button className="button" type="button" onClick={handleProcessAll}>
+          Process all documents
+        </button>
       </div>
-      <SurfaceCard title="Requested document set">
+
+      <SurfaceCard title="Uploaded Document Intelligence Set" eyebrow="Classification & Processing">
         <div className="table-like">
-          {application.profile.documents.map((document) => (
-            <div className="table-like__row" key={document.id}>
-              <div>
-                <strong>{document.type}</strong>
-                <p className="muted">{document.fileName}</p>
+          {application.profile.documents.map((document) => {
+            const summary = document.extractionSummary
+            const isProcessing = processingDocId === document.id || document.status === 'processing' || document.status === 'extracting' || document.status === 'classifying'
+
+            return (
+              <div className="table-like__row" key={document.id} style={{ alignItems: 'flex-start', padding: '12px 0' }}>
+                <div style={{ flex: 1 }}>
+                  <strong>{document.fileName}</strong>
+                  <p className="muted">
+                    Category: {document.category ?? document.type} {summary ? `· ${Math.round(summary.classificationConfidence * 100)}% match` : ''}
+                  </p>
+                  {document.failureReason && (
+                    <p className="text-sm" style={{ color: '#ef4444', marginTop: 4 }}>
+                      Error: {document.failureReason}
+                    </p>
+                  )}
+                  {summary && (
+                    <div className="pill-row" style={{ marginTop: 6 }}>
+                      <span className="pill">{summary.totalFactsFound} facts found</span>
+                      <span className="pill" style={{ backgroundColor: '#ecfdf5', color: '#047857' }}>
+                        {summary.acceptedFactsCount} accepted
+                      </span>
+                      {summary.reviewRequiredCount > 0 && (
+                        <span className="pill" style={{ backgroundColor: '#fffbebe', color: '#b45309' }}>
+                          {summary.reviewRequiredCount} review required
+                        </span>
+                      )}
+                      {summary.conflictsCreatedCount > 0 && (
+                        <span className="pill" style={{ backgroundColor: '#fef2f2', color: '#b91c1c' }}>
+                          {summary.conflictsCreatedCount} conflicts created
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="button-row" style={{ alignItems: 'center' }}>
+                  <StatusBadge status={document.status} />
+                  <button
+                    className="button button--secondary"
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleProcessSingle(document.id)}
+                  >
+                    {isProcessing ? 'Processing...' : 'Process with AI'}
+                  </button>
+                </div>
               </div>
-              <StatusBadge status={document.status} />
-            </div>
-          ))}
+            )
+          })}
         </div>
       </SurfaceCard>
-      <SurfaceCard title="Extracted facts" eyebrow="Field provenance">
+
+      <SurfaceCard title="Extracted Fact Provenance" eyebrow="Evidence History">
         <div className="table-like">
-          {application.profile.fieldProvenance.map((fact) => (
-            <div className="table-like__row provenance-row" key={fact.id}>
-              <div>
-                <strong>{fact.label}</strong>
-                <p className="muted">{fact.canonicalField}</p>
+          {application.profile.fieldProvenance.length === 0 ? (
+            <p className="muted">No document facts extracted yet. Click "Process with AI" above to extract evidence.</p>
+          ) : (
+            application.profile.fieldProvenance.map((fact) => (
+              <div className="table-like__row provenance-row" key={fact.id}>
+                <div>
+                  <strong>{fact.label}</strong>
+                  <p className="muted">{fact.canonicalField}</p>
+                </div>
+                <div>
+                  <strong>{String(fact.value)}</strong>
+                  <p className="muted">
+                    {fact.sourceType} · {fact.sourceDocument ?? 'No document'}
+                    {fact.sourcePage ? ` · p.${fact.sourcePage}` : ''}
+                  </p>
+                </div>
+                <div>
+                  <strong>{fact.confidence ? `${Math.round(fact.confidence * 100)}%` : '—'}</strong>
+                  <p className="muted">{fact.customerConfirmed ? 'Customer confirmed' : 'Evidence only'}</p>
+                </div>
               </div>
-              <div>
-                <strong>{String(fact.value)}</strong>
-                <p className="muted">{fact.sourceType} · {fact.sourceDocument ?? 'No document'}{fact.sourcePage ? ` · p.${fact.sourcePage}` : ''}</p>
-              </div>
-              <div>
-                <strong>{fact.confidence ? `${Math.round(fact.confidence * 100)}%` : '—'}</strong>
-                <p className="muted">{fact.customerConfirmed ? 'Customer confirmed' : 'Awaiting confirmation'}</p>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </SurfaceCard>
-      <Link className="button button--secondary" to={`/customer/applications/${application.id}/wizard`}>Continue to smart wizard</Link>
+
+      <div className="button-row button-row--wrap" style={{ justifyContent: 'space-between' }}>
+        <p className="muted">
+          Extracted facts populate missing application requirements. Smart Wizard will ask only what is still unresolved.
+        </p>
+        <Link className="button" to={`/customer/applications/${application.id}/wizard`}>
+          Continue to Smart Wizard
+        </Link>
+      </div>
     </div>
   )
 }

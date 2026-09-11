@@ -11,6 +11,7 @@ import type {
   ReadinessResult,
 } from '../domain/types'
 import { buildAcord125Preview } from '../adapters/applications/acord125/adapter'
+import type { DocumentProcessingResult } from '../services/documents/documentProcessingService'
 
 export interface AppStateValue {
   application: ApplicationRecord
@@ -23,6 +24,7 @@ export interface AppStateValue {
   persistenceState: PersistenceState
   persistenceError?: string
   processDocuments: () => void | Promise<void>
+  processDocumentWithAI: (documentId: string) => Promise<DocumentProcessingResult>
   answerWizardQuestion: (field: string, value: FieldValue) => void | Promise<void>
   resetDemo: () => void | Promise<void>
   confirmCustomerReview: () => void | Promise<void>

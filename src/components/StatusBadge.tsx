@@ -21,6 +21,10 @@ const toneMap: Record<BadgeTone, string> = {
   extracting: 'accent',
   review_required: 'warning',
   complete: 'success',
+  uploaded: 'muted',
+  classifying: 'info',
+  processed: 'success',
+  failed: 'danger',
 }
 
 const labelMap: Partial<Record<BadgeTone, string>> = {

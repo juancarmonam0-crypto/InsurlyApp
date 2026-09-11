@@ -7,7 +7,7 @@ import type {
   FieldValue,
   RequirementDefinition,
 } from '../../domain/types'
-import { hasMeaningfulValue, setFieldValue } from '../application/fieldAccess'
+import { getFieldValue, hasMeaningfulValue, setFieldValue } from '../application/fieldAccess'
 import { valuesEquivalent } from './normalization'
 
 const isHistoricalDocument = (evidence: FieldProvenance) => {
@@ -58,12 +58,15 @@ export const evaluateConflict = (
 ): ConflictRecord | null => {
   const provenance = application.profile.fieldProvenance.filter((item) => item.canonicalField === requirement.canonicalField)
   const customerDeclaration = getLatestCustomerDeclaration(provenance)
-  if (!customerDeclaration) return null
+  const currentSelectedVal = getFieldValue(application, requirement.canonicalField)
+  const declaredVal = customerDeclaration?.value ?? currentSelectedVal
+
+  if (!hasMeaningfulValue(declaredVal)) return null
 
   const evidence = getRelevantEvidence(provenance)
   if (evidence.length === 0) return null
 
-  const conflictsEvidence = evidence.filter((item) => !valuesEquivalent(item.value, customerDeclaration.value))
+  const conflictsEvidence = evidence.filter((item) => !valuesEquivalent(item.value, declaredVal))
   if (conflictsEvidence.length === 0) return null
 
   const existing = application.conflicts.find((conflict) => conflict.canonicalField === requirement.canonicalField)
@@ -77,7 +80,7 @@ export const evaluateConflict = (
     label: requirement.label,
     status: 'open',
     message: 'Conflicting information detected. Broker review recommended.',
-    customerValue: customerDeclaration.value,
+    customerValue: declaredVal,
     evidence: conflictsEvidence,
     material: requirement.material,
     blocking: requirement.material,
@@ -98,13 +101,15 @@ export const evaluateConflicts = (application: ApplicationRecord, requirements: 
     .map((requirement) => evaluateConflict(application, requirement))
     .filter((conflict): conflict is ConflictRecord => conflict !== null)
 
-  const retainedResolved = application.conflicts.filter((conflict) => {
-    if (conflict.status !== 'resolved') return false
-    return requirementMap.has(conflict.canonicalField)
+  const retainedResolvedOrOpenDoc = application.conflicts.filter((conflict) => {
+    if (conflict.status === 'resolved' || conflict.status === 'open') {
+      return requirementMap.has(conflict.canonicalField)
+    }
+    return false
   })
 
   const merged = new Map<string, ConflictRecord>()
-  ;[...retainedResolved, ...evaluated].forEach((conflict) => {
+  ;[...retainedResolvedOrOpenDoc, ...evaluated].forEach((conflict) => {
     merged.set(conflict.canonicalField, conflict)
   })
 
