@@ -1,0 +1,6 @@
+{
+  "name": "Insurly - Insurance Broker Platform",
+  "description": "White-label AI-first insurance broker platform unifying chat intake, document extraction, and smart forms into a canonical customer profile.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
