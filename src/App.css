@@ -56,6 +56,7 @@ strong {
 
 .app-shell {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -152,7 +153,8 @@ strong {
 
 .workspace-grid,
 .grid,
-.landing-hero {
+.landing-hero,
+.product-grid {
   display: grid;
   gap: 1.25rem;
 }
@@ -206,6 +208,7 @@ strong {
 }
 
 .stack-sm,
+.stack-md,
 .stack-lg,
 .stack-xl,
 .sidebar__nav,
@@ -216,6 +219,7 @@ strong {
 }
 
 .stack-sm { gap: 0.75rem; }
+.stack-md { gap: 1rem; }
 .stack-lg { gap: 1.25rem; }
 .stack-xl { gap: 2rem; }
 .sidebar__nav { gap: 0.35rem; margin-top: 1.5rem; }
@@ -255,6 +259,51 @@ strong {
   grid-template-columns: 1.4fr 1fr;
   align-items: center;
   padding: 1rem 0;
+}
+
+.product-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 100%;
+}
+
+.product-choice .button {
+  margin-top: auto;
+}
+
+.product-choice--disabled {
+  opacity: 0.75;
+}
+
+.step-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.step-list li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.step-list__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--brand-tint);
+  color: var(--brand);
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .channel-diagram {
@@ -391,6 +440,7 @@ strong {
   background: var(--brand);
   color: #fff;
   cursor: pointer;
+  text-align: center;
 }
 
 .button:hover {
@@ -415,6 +465,26 @@ strong {
   gap: 1rem;
 }
 
+.card-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.button-row--wrap {
+  flex-wrap: wrap;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.pill--success {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 12%, var(--border));
+}
+
 @media (max-width: 1024px) {
   .workspace-grid,
   .landing-hero,
@@ -422,6 +492,8 @@ strong {
   .three-up,
   .categories-grid,
   .two-up,
+  .product-grid,
+  .card-grid,
   .info-grid,
   .summary-list,
   .hero-stats,

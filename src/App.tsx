@@ -11,51 +11,81 @@ import {
   SmartWizardPage,
 } from './features/customer/CustomerPages'
 import { SurfaceCard } from './components/SurfaceCard'
-import { StatusBadge } from './components/StatusBadge'
 import { AppStateProvider } from './state/AppState'
 import { useAppState } from './state/useAppState'
 
 const LandingPage = () => {
-  const { resetDemo } = useAppState()
+  const { application } = useAppState()
+
+  const supportedProducts = [
+    {
+      title: 'Business',
+      summary: 'Start a business insurance application and continue with documents or a few smart questions.',
+      to: `/customer/applications/${application.id}/documents`,
+      eyebrow: 'Available now',
+      cta: 'Start application',
+    },
+  ]
+
+  const futureProducts = [
+    { title: 'Auto', summary: 'Commercial auto is coming soon.' },
+    { title: 'Home', summary: 'Home coverage is coming soon.' },
+  ]
 
   return (
     <div className="stack-xl">
       <section className="landing-hero">
         <div className="stack-lg">
-          <p className="eyebrow">White-label AI-first insurance broker platform</p>
-          <h1>Insurance for what matters.</h1>
-          <p className="lede">Insurly unifies chat intake, document extraction, and smart forms into one canonical customer profile so nobody has to enter the same information twice.</p>
-          <div className="button-row">
-            <Link className="button" to="/start">Start Your Application</Link>
-            <button className="button button--secondary" type="button" onClick={resetDemo}>Reset demo</button>
-          </div>
+          <p className="eyebrow">Insurly</p>
+          <h1>What do you need to insure?</h1>
+          <p className="lede">
+            Start with your coverage type, upload useful documents or skip ahead, answer only what is still needed, then review and finish.
+          </p>
         </div>
-        <SurfaceCard title="Three channels → One canonical profile" eyebrow="How Insurly works">
-          <div className="channel-diagram">
-            <span>ChatGPT</span>
-            <span>Document Upload</span>
-            <span>Smart Wizard</span>
-            <strong>Canonical customer profile</strong>
-          </div>
+        <SurfaceCard title="How it works" eyebrow="Simple steps">
+          <ol className="step-list">
+            <li>
+              <span className="step-list__number">1</span>
+              <div>
+                <strong>Choose insurance</strong>
+                <p className="muted">Pick the application you want to complete.</p>
+              </div>
+            </li>
+            <li>
+              <span className="step-list__number">2</span>
+              <div>
+                <strong>Upload documents or skip</strong>
+                <p className="muted">Share helpful files now, or answer questions manually.</p>
+              </div>
+            </li>
+            <li>
+              <span className="step-list__number">3</span>
+              <div>
+                <strong>Review and submit</strong>
+                <p className="muted">Check your details and send the application for review.</p>
+              </div>
+            </li>
+          </ol>
         </SurfaceCard>
       </section>
-      <section className="surface-card">
-        <div className="surface-card__header">
-          <div>
-            <p className="eyebrow">Application states</p>
-            <h3>Supported workflow lifecycle</h3>
-          </div>
-        </div>
-        <div className="pill-row">
-          {['draft', 'collecting_information', 'customer_review', 'broker_review', 'ready_to_submit', 'submitted', 'quoted', 'bound', 'declined', 'closed'].map((state) => (
-            <StatusBadge key={state} status={state as never} />
-          ))}
-        </div>
-      </section>
-      <section className="grid categories-grid">
-        {['Auto', 'Home', 'Business', 'Life', 'Health', 'More'].map((category) => (
-          <SurfaceCard key={category} title={category}>
-            <p className="muted">Fictional demo coverage workflow for {category.toLowerCase()} programs.</p>
+
+      <section className="grid product-grid" aria-label="Insurance choices">
+        {supportedProducts.map((product) => (
+          <SurfaceCard key={product.title} title={product.title} eyebrow={product.eyebrow}>
+            <div className="product-choice">
+              <p className="muted">{product.summary}</p>
+              <Link className="button" to={product.to}>{product.cta}</Link>
+            </div>
+          </SurfaceCard>
+        ))}
+        {futureProducts.map((product) => (
+          <SurfaceCard key={product.title} title={product.title} eyebrow="Coming later">
+            <div className="product-choice product-choice--disabled">
+              <p className="muted">{product.summary}</p>
+              <button className="button button--secondary" type="button" disabled>
+                Not available yet
+              </button>
+            </div>
           </SurfaceCard>
         ))}
       </section>
@@ -66,31 +96,7 @@ const LandingPage = () => {
 const StartApplicationPage = () => {
   const { application } = useAppState()
 
-  return (
-    <div className="stack-lg">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">Start your application</p>
-          <h1>Choose the channel that matches the customer</h1>
-          <p className="lede">All three experiences feed the same normalized profile, missing-info engine, and broker workflow.</p>
-        </div>
-      </div>
-      <div className="grid three-up">
-        <SurfaceCard title="Continue with ChatGPT" eyebrow="Placeholder experience">
-          <p className="muted">Conversational intake will plug into future LLM services behind a stable service interface.</p>
-          <Link className="button button--secondary" to={`/customer/applications/${application.id}/overview`}>Open workspace</Link>
-        </SurfaceCard>
-        <SurfaceCard title="Upload Documents" eyebrow="Fastest path for renewals">
-          <p className="muted">Current policy, prior ACORDs, loss runs, business docs, and schedules feed document extraction services later.</p>
-          <Link className="button" to={`/customer/applications/${application.id}/documents`}>Upload CurrentPolicy.pdf</Link>
-        </SurfaceCard>
-        <SurfaceCard title="Step-by-Step Assistant" eyebrow="Smart Wizard">
-          <p className="muted">DB-driven question metadata supports conditional logic, save/resume, and field skipping.</p>
-          <Link className="button button--secondary" to={`/customer/applications/${application.id}/wizard`}>Start wizard</Link>
-        </SurfaceCard>
-      </div>
-    </div>
-  )
+  return <Navigate to={`/customer/applications/${application.id}/documents`} replace />
 }
 
 const AppRoutes = () => (
