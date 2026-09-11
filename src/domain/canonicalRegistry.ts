@@ -60,6 +60,13 @@ export const CANONICAL_FIELD_REGISTRY: CanonicalFieldDefinition[] = [
   { key: 'currentInsurance.expirationDate', entityType: 'policy', fieldPath: 'expirationDate', valueType: 'date', label: 'Policy Expiration Date', aliases: ['policy.expiration_date', 'expiration_date', 'prior_expiration_date'] },
   { key: 'currentInsurance.limits', entityType: 'policy', fieldPath: 'limits', valueType: 'string', label: 'Coverage Limits', aliases: ['limits'] },
   { key: 'currentInsurance.premium', entityType: 'policy', fieldPath: 'premium', valueType: 'currency', label: 'Current Premium', aliases: ['premium'] },
+  { key: 'application.desiredEffectiveDate', entityType: 'policy', fieldPath: 'desiredEffectiveDate', valueType: 'date', label: 'Desired Effective Date', aliases: ['desired_effective_date', 'app_effective_date'] },
+
+  // General Liability Exposure fields
+  { key: 'gl.subcontractorUsage', entityType: 'business', fieldPath: 'subcontractorUsage', valueType: 'boolean', label: 'Subcontractor Usage', aliases: ['subcontractor_usage', 'uses_subcontractors'] },
+  { key: 'gl.subcontractorPercent', entityType: 'business', fieldPath: 'subcontractorPercent', valueType: 'number', label: 'Percentage Subcontracted', aliases: ['subcontractor_percent', 'subcontracted_percentage'], validation: { min: 0, max: 100 } },
+  { key: 'gl.residentialCommercialMix', entityType: 'business', fieldPath: 'residentialCommercialMix', valueType: 'string', label: 'Residential / Commercial Mix', aliases: ['residential_commercial_mix', 'work_mix'] },
+  { key: 'gl.operationsDescription', entityType: 'business', fieldPath: 'operationsDescription', valueType: 'string', label: 'GL Operations Description', aliases: ['gl_operations_description', 'operations_description'] },
 
   // Loss entity
   { key: 'loss.date', entityType: 'loss', fieldPath: 'date', valueType: 'date', label: 'Loss Date', aliases: ['loss.loss_date', 'loss_date'] },

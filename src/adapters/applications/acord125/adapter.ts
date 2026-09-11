@@ -17,9 +17,19 @@ const mappingDefinitions: MappingDefinition[] = [
     targetField: 'ACORD125.Applicant.LegalName',
   },
   {
+    canonicalField: 'business.dba',
+    displayLabel: 'DBA / Operating Name',
+    targetField: 'ACORD125.Applicant.DBAName',
+  },
+  {
     canonicalField: 'business.entityType',
     displayLabel: 'Entity Type',
     targetField: 'ACORD125.Applicant.EntityType',
+  },
+  {
+    canonicalField: 'business.fein',
+    displayLabel: 'Federal Tax ID (FEIN)',
+    targetField: 'ACORD125.Applicant.FEIN',
   },
   {
     canonicalField: 'business.stateOfFormation',
@@ -27,14 +37,24 @@ const mappingDefinitions: MappingDefinition[] = [
     targetField: 'ACORD125.Applicant.StateOfFormation',
   },
   {
+    canonicalField: 'person.fullName',
+    displayLabel: 'Primary Contact Name',
+    targetField: 'ACORD125.Applicant.ContactName',
+  },
+  {
+    canonicalField: 'location.addressLine1',
+    displayLabel: 'Premises Address',
+    targetField: 'ACORD125.Location.AddressLine1',
+  },
+  {
     canonicalField: 'business.annualRevenue',
-    displayLabel: 'Annual Revenue',
+    displayLabel: 'Annual Revenue / Gross Receipts',
     targetField: 'ACORD125.Business.AnnualRevenue',
     transform: (value) => typeof value === 'number' ? `$${value.toLocaleString()}` : formatValue(value),
   },
   {
     canonicalField: 'business.naicsCode',
-    displayLabel: 'NAICS',
+    displayLabel: 'NAICS Classification',
     targetField: 'ACORD125.Business.NAICSCode',
   },
   {
@@ -43,14 +63,40 @@ const mappingDefinitions: MappingDefinition[] = [
     targetField: 'ACORD125.Business.EmployeeCount',
   },
   {
-    canonicalField: 'business.fein',
-    displayLabel: 'FEIN',
-    targetField: 'ACORD125.Business.FEIN',
+    canonicalField: 'business.yearsInBusiness',
+    displayLabel: 'Years in Business',
+    targetField: 'ACORD125.Business.YearsInBusiness',
   },
   {
-    canonicalField: 'currentInsurance.effectiveDate',
-    displayLabel: 'Desired Effective Date',
-    targetField: 'ACORD125.Policy.DesiredEffectiveDate',
+    canonicalField: 'currentInsurance.carrierName',
+    displayLabel: 'Prior / Current Carrier',
+    targetField: 'ACORD125.PriorCoverage.CarrierName',
+  },
+  {
+    canonicalField: 'currentInsurance.limits',
+    displayLabel: 'General Liability Limits',
+    targetField: 'ACORD125.Coverage.Limits',
+  },
+  {
+    canonicalField: 'application.desiredEffectiveDate',
+    displayLabel: 'Proposed Effective Date',
+    targetField: 'ACORD125.Policy.ProposedEffectiveDate',
+  },
+  {
+    canonicalField: 'loss.description',
+    displayLabel: 'Prior Loss History Summary',
+    targetField: 'ACORD125.LossHistory.Summary',
+  },
+  {
+    canonicalField: 'gl.subcontractorUsage',
+    displayLabel: 'Subcontractor Operations Flag',
+    targetField: 'ACORD125.Remarks.SubcontractorUsage',
+    transform: (value) => (value === true ? 'Yes' : value === false ? 'No' : 'Unspecified'),
+  },
+  {
+    canonicalField: 'gl.residentialCommercialMix',
+    displayLabel: 'Operations Mix (Res / Comm)',
+    targetField: 'ACORD125.Remarks.OperationsMix',
   },
 ]
 

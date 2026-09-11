@@ -81,6 +81,7 @@ export const extractFactsFromCustomerProfile = (customer: CustomerRecord): Profi
       const firstName = parts[0] ?? ''
       const lastName = parts.slice(1).join(' ')
 
+      addFact('person', person.id, 'person.fullName', person.fullName, true, true)
       addFact('person', person.id, 'person.firstName', firstName, true, true)
       addFact('person', person.id, 'person.lastName', lastName, true, true)
       addFact('person', person.id, 'person.role', person.role, true, true)

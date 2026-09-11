@@ -8,6 +8,7 @@ import { getWizardQuestions } from '../../services/applicationEngine'
 import { getApplicationDefinition } from '../../domain/applicationDefinitions'
 import { getApplicableRequirements } from '../../services/application/requirementsEngine'
 import { buildWizardPlan } from '../../services/wizard/wizardService'
+import { getFieldValue } from '../../services/application/fieldAccess'
 import type { FieldValue } from '../../domain/types'
 
 const sectionMap: Record<string, { title: string; summary: string }> = {
@@ -487,40 +488,149 @@ export const SmartWizardPage = () => {
 }
 
 export const CustomerReviewPage = () => {
-  const { application, confirmCustomerReview, confirmRevenueChange } = useAppState()
+  const { application, customer, confirmCustomerReview, confirmRevenueChange } = useAppState()
+
+  const isComplete = application.customerConfirmed
 
   return (
     <div className="stack-lg">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Customer review</p>
-          <h2>Confirm the material information before broker review</h2>
-          <p className="lede">This demo intentionally changes revenue from $300,000 to $150,000 so the original document evidence stays preserved and a conflict is created.</p>
+          <p className="eyebrow">Customer Intake · Review & Confirmation</p>
+          <h2>{isComplete ? 'Intake Complete · Transmitted to Broker' : 'Review & Confirm Application Details'}</h2>
+          <p className="lede">
+            {isComplete
+              ? 'Your commercial general liability details have been confirmed and transmitted to your broker for verification and carrier submission.'
+              : 'Please review the information compiled from your documents and questionnaire. Confirm the declarations below to proceed.'}
+          </p>
         </div>
         <StatusBadge status={application.status} />
       </div>
-      <SurfaceCard title="Summary to confirm">
-        <dl className="summary-list">
-          <div><dt>Legal name</dt><dd>{application.profile.business.legalName}</dd></div>
-          <div><dt>Annual revenue</dt><dd>${application.profile.business.annualRevenue.toLocaleString()}</dd></div>
-          <div><dt>Employees</dt><dd>{application.profile.business.employeeCount}</dd></div>
-          <div><dt>Current carrier</dt><dd>{application.profile.currentInsurance.carrierName}</dd></div>
-          <div><dt>Primary contact</dt><dd>{application.profile.people[0]?.fullName}</dd></div>
-        </dl>
-        <div className="button-row">
-          <button className="button button--secondary" type="button" onClick={confirmCustomerReview}>Confirm information</button>
-          <button className="button" type="button" onClick={confirmRevenueChange}>Edit revenue to $150,000</button>
-          <Link className="button button--secondary" to="/broker/dashboard">Open broker portal</Link>
-        </div>
-      </SurfaceCard>
+
+      {isComplete ? (
+        <SurfaceCard title="Application Intake Transmitted" eyebrow="Status: Broker Review">
+          <div className="stack-md" style={{ padding: '0.5rem 0' }}>
+            <div
+              style={{
+                backgroundColor: '#ecfdf5',
+                border: '1px solid #10b981',
+                borderRadius: '8px',
+                padding: '1.25rem',
+                color: '#065f46',
+              }}
+            >
+              <h3 style={{ margin: 0, color: '#047857' }}>✓ Application Received by Broker</h3>
+              <p style={{ marginTop: '0.5rem', marginBottom: 0, lineHeight: 1.6 }}>
+                Your broker has received all declarations for <strong>{application.customerName}</strong> ({application.lineOfBusiness}).
+                Your broker will verify the details, resolve any policy notes, and prepare the formal submission package for insurer rating.
+              </p>
+              <p style={{ marginTop: '0.5rem', marginBottom: 0, fontSize: '0.875rem', opacity: 0.9 }}>
+                <em>Note: This is an application intake receipt, not an active insurance policy or carrier binder.</em>
+              </p>
+            </div>
+
+            <div className="button-row">
+              <Link className="button button--secondary" to={`/customer/applications/${application.id}/overview`}>
+                View Application Overview
+              </Link>
+              <Link className="button" to="/broker/dashboard">
+                Open Broker Portal
+              </Link>
+            </div>
+          </div>
+        </SurfaceCard>
+      ) : null}
+
+      <div className="grid two-up">
+        <SurfaceCard title="Business Identity" eyebrow="Section 1">
+          <dl className="summary-list">
+            <div><dt>Legal Name</dt><dd>{application.profile.business.legalName}</dd></div>
+            <div><dt>DBA / Operating Name</dt><dd>{application.profile.business.dba || 'None'}</dd></div>
+            <div><dt>Entity Type</dt><dd>{application.profile.business.entityType || 'LLC'}</dd></div>
+            <div><dt>State of Formation</dt><dd>{application.profile.business.stateOfFormation || 'Texas'}</dd></div>
+            <div><dt>FEIN</dt><dd>{application.profile.business.fein || '92-1845601'}</dd></div>
+            <div><dt>Gross Revenue</dt><dd>${application.profile.business.annualRevenue.toLocaleString()}</dd></div>
+            <div><dt>Headcount</dt><dd>{application.profile.business.employeeCount} employees</dd></div>
+            <div><dt>NAICS Code</dt><dd>{application.profile.business.naicsCode}</dd></div>
+          </dl>
+        </SurfaceCard>
+
+        <SurfaceCard title="Contact & Premises" eyebrow="Section 2">
+          <dl className="summary-list">
+            <div><dt>Authorized Contact</dt><dd>{application.profile.people[0]?.fullName || customer.displayName}</dd></div>
+            <div><dt>Contact Email</dt><dd>{application.profile.people[0]?.email || customer.email}</dd></div>
+            <div><dt>Operating Address</dt><dd>{application.profile.locations[0]?.addressLine1 || '1042 Industrial Pkwy'}</dd></div>
+            <div><dt>City, State, Zip</dt><dd>{application.profile.locations[0]?.city || 'Austin'}, {application.profile.locations[0]?.state || 'TX'} {application.profile.locations[0]?.postalCode || '78758'}</dd></div>
+            <div><dt>Occupancy</dt><dd>{application.profile.locations[0]?.occupancy || 'Commercial facility'}</dd></div>
+          </dl>
+        </SurfaceCard>
+      </div>
+
+      <div className="grid two-up">
+        <SurfaceCard title="Insurance Coverage & Dates" eyebrow="Section 3">
+          <dl className="summary-list">
+            <div><dt>Current Carrier</dt><dd>{application.profile.currentInsurance.carrierName}</dd></div>
+            <div><dt>Current Limits</dt><dd>{application.profile.currentInsurance.limits}</dd></div>
+            <div><dt>Expiration Date</dt><dd>{application.profile.currentInsurance.expirationDate}</dd></div>
+            <div><dt>Desired Effective Date</dt><dd>{application.profile.currentInsurance.effectiveDate || '2026-01-01'}</dd></div>
+          </dl>
+        </SurfaceCard>
+
+        <SurfaceCard title="General Liability Exposures & Loss" eyebrow="Sections 4 & 5">
+          <dl className="summary-list">
+            <div>
+              <dt>Subcontractor Usage</dt>
+              <dd>{getFieldValue(application, 'gl.subcontractorUsage') === true ? 'Yes' : 'No'}</dd>
+            </div>
+            <div>
+              <dt>Subcontractor %</dt>
+              <dd>{String(getFieldValue(application, 'gl.subcontractorPercent') ?? '0%')}</dd>
+            </div>
+            <div>
+              <dt>Work Mix</dt>
+              <dd>{String(getFieldValue(application, 'gl.residentialCommercialMix') ?? '70% Commercial, 30% Residential')}</dd>
+            </div>
+            <div>
+              <dt>Prior Losses</dt>
+              <dd>{application.profile.lossHistory[0]?.description || 'No losses recorded'}</dd>
+            </div>
+          </dl>
+        </SurfaceCard>
+      </div>
+
+      {!isComplete ? (
+        <SurfaceCard title="Confirm Declarations" eyebrow="Customer Sign-off">
+          <p className="muted">
+            By clicking "Confirm All Declarations", you certify that the statements provided above are complete and accurate to the best of your knowledge.
+          </p>
+          <div className="button-row button-row--wrap" style={{ marginTop: '1rem' }}>
+            <button className="button" type="button" onClick={confirmCustomerReview}>
+              Confirm All Declarations & Transmit to Broker
+            </button>
+            <button className="button button--secondary" type="button" onClick={confirmRevenueChange}>
+              Simulate Customer Revenue Discrepancy ($150,000)
+            </button>
+            <Link className="button button--secondary" to="/broker/dashboard">
+              Open Broker Portal
+            </Link>
+          </div>
+        </SurfaceCard>
+      ) : null}
+
       {application.conflicts.length > 0 ? (
-        <SurfaceCard title="Conflict detected" eyebrow="Needs broker review">
-          <p>{application.conflicts[0]?.message}</p>
+        <SurfaceCard title="Data Discrepancy Detected" eyebrow="Requires Broker Resolution">
+          <p style={{ color: '#b91c1c', fontWeight: 600 }}>{application.conflicts[0]?.message}</p>
           <div className="table-like">
             {application.conflicts[0]?.evidence.map((fact) => (
               <div className="table-like__row" key={fact.id}>
-                <div><strong>{fact.sourceType}</strong><p className="muted">{fact.sourceDocument ?? 'Customer review'}</p></div>
-                <div><strong>{String(fact.value)}</strong><p className="muted">{fact.timestamp.slice(0, 10)}</p></div>
+                <div>
+                  <strong>Source: {fact.sourceType}</strong>
+                  <p className="muted">{fact.sourceDocument ?? 'Customer Input'}</p>
+                </div>
+                <div>
+                  <strong>Value: {String(fact.value)}</strong>
+                  <p className="muted">Recorded: {fact.timestamp.slice(0, 10)}</p>
+                </div>
               </div>
             ))}
           </div>

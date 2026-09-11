@@ -12,6 +12,12 @@ const accessors: Record<string, FieldAccessor> = {
       ? { ...application, profile: { ...application.profile, business: { ...application.profile.business, legalName: value } } }
       : application,
   },
+  'business.dba': {
+    get: (application) => application.profile.business.dba,
+    set: (application, value) => typeof value === 'string'
+      ? { ...application, profile: { ...application.profile, business: { ...application.profile.business, dba: value } } }
+      : application,
+  },
   'business.entityType': {
     get: (application) => application.profile.business.entityType,
     set: (application, value) => typeof value === 'string'
@@ -70,6 +76,90 @@ const accessors: Record<string, FieldAccessor> = {
     get: (application) => application.profile.currentInsurance.effectiveDate,
     set: (application, value) => typeof value === 'string'
       ? { ...application, profile: { ...application.profile, currentInsurance: { ...application.profile.currentInsurance, effectiveDate: value } } }
+      : application,
+  },
+  'currentInsurance.expirationDate': {
+    get: (application) => application.profile.currentInsurance.expirationDate,
+    set: (application, value) => typeof value === 'string'
+      ? { ...application, profile: { ...application.profile, currentInsurance: { ...application.profile.currentInsurance, expirationDate: value } } }
+      : application,
+  },
+  'currentInsurance.limits': {
+    get: (application) => application.profile.currentInsurance.limits,
+    set: (application, value) => typeof value === 'string'
+      ? { ...application, profile: { ...application.profile, currentInsurance: { ...application.profile.currentInsurance, limits: value } } }
+      : application,
+  },
+  'currentInsurance.premium': {
+    get: (application) => application.profile.currentInsurance.premium,
+    set: (application, value) => typeof value === 'number'
+      ? { ...application, profile: { ...application.profile, currentInsurance: { ...application.profile.currentInsurance, premium: value } } }
+      : application,
+  },
+  'gl.subcontractorUsage': {
+    get: (application) => {
+      const fs = application.fieldStates.find((f) => f.canonicalField === 'gl.subcontractorUsage')
+      return fs?.selectedValue
+    },
+    set: (application, _value) => application,
+  },
+  'gl.subcontractorPercent': {
+    get: (application) => {
+      const fs = application.fieldStates.find((f) => f.canonicalField === 'gl.subcontractorPercent')
+      return fs?.selectedValue
+    },
+    set: (application, _value) => application,
+  },
+  'gl.residentialCommercialMix': {
+    get: (application) => {
+      const fs = application.fieldStates.find((f) => f.canonicalField === 'gl.residentialCommercialMix')
+      return fs?.selectedValue
+    },
+    set: (application, _value) => application,
+  },
+  'gl.operationsDescription': {
+    get: (application) => {
+      const fs = application.fieldStates.find((f) => f.canonicalField === 'gl.operationsDescription')
+      return fs?.selectedValue ?? application.profile.business.description
+    },
+    set: (application, value) => typeof value === 'string'
+      ? { ...application, profile: { ...application.profile, business: { ...application.profile.business, description: value } } }
+      : application,
+  },
+  'loss.description': {
+    get: (application) => application.profile.lossHistory[0]?.description,
+    set: (application, value) => typeof value === 'string' && application.profile.lossHistory[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            lossHistory: [{ ...application.profile.lossHistory[0], description: value }, ...application.profile.lossHistory.slice(1)],
+          },
+        }
+      : application,
+  },
+  'loss.amount': {
+    get: (application) => application.profile.lossHistory[0]?.amount,
+    set: (application, value) => typeof value === 'number' && application.profile.lossHistory[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            lossHistory: [{ ...application.profile.lossHistory[0], amount: value }, ...application.profile.lossHistory.slice(1)],
+          },
+        }
+      : application,
+  },
+  'loss.date': {
+    get: (application) => application.profile.lossHistory[0]?.date,
+    set: (application, value) => typeof value === 'string' && application.profile.lossHistory[0]
+      ? {
+          ...application,
+          profile: {
+            ...application.profile,
+            lossHistory: [{ ...application.profile.lossHistory[0], date: value }, ...application.profile.lossHistory.slice(1)],
+          },
+        }
       : application,
   },
   'application.desiredEffectiveDate': {

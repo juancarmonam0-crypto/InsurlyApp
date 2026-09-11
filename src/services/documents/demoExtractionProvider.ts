@@ -215,6 +215,51 @@ export class DemoExtractionProvider implements DocumentExtractionProvider {
           extractionMethod: 'table_parser',
           status: 'valid',
         },
+        {
+          id: `fact-${document.id}-3`,
+          rawLabel: 'Prior Loss Description',
+          rawValue: 'Single equipment water leak claim, repaired and closed with no open subrogation',
+          proposedCanonicalField: 'loss.description',
+          canonicalField: 'loss.description',
+          entityType: 'loss',
+          normalizedValue: 'Single equipment water leak claim, repaired and closed with no open subrogation',
+          confidence: 0.94,
+          page: 1,
+          evidenceText: 'CAUSE OF LOSS: Water leak - closed paid $2,400',
+          extractionMethod: 'table_parser',
+          status: 'valid',
+        },
+      )
+    } else if (category === 'business_document') {
+      fields.push(
+        {
+          id: `fact-${document.id}-1`,
+          rawLabel: 'Entity Structure',
+          rawValue: 'Limited Liability Company',
+          proposedCanonicalField: 'business.entityType',
+          canonicalField: 'business.entityType',
+          entityType: 'business',
+          normalizedValue: 'LLC',
+          confidence: 0.97,
+          page: 1,
+          evidenceText: 'Certificate of Filing: Limited Liability Company (LLC)',
+          extractionMethod: 'ocr_extraction',
+          status: 'valid',
+        },
+        {
+          id: `fact-${document.id}-2`,
+          rawLabel: 'State of Formation',
+          rawValue: 'Texas',
+          proposedCanonicalField: 'business.stateOfFormation',
+          canonicalField: 'business.stateOfFormation',
+          entityType: 'business',
+          normalizedValue: 'TX',
+          confidence: 0.96,
+          page: 1,
+          evidenceText: 'Formed under the laws of the State of Texas',
+          extractionMethod: 'ocr_extraction',
+          status: 'valid',
+        },
       )
     } else if (category === 'vehicle_schedule') {
       fields.push(

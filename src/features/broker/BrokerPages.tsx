@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SurfaceCard } from '../../components/SurfaceCard'
 import { StatusBadge } from '../../components/StatusBadge'
 import { brokerMetrics } from '../../data/mock/insurly'
+import { getFieldValue } from '../../services/application/fieldAccess'
 import { useAppState } from '../../state/useAppState'
 
 const brokerNav = ['Dashboard', 'Customers', 'Applications', 'Needs Review', 'Documents', 'Analytics', 'Settings']
@@ -162,62 +164,222 @@ export const BrokerApplicationPage = () => {
 
 export const BrokerFormsPage = () => {
   const { acordPreview, markGenerated, application, latestSnapshot, snapshots, readiness } = useAppState()
+  const [showPackagePreview, setShowPackagePreview] = useState(false)
+
+  const handleExportJson = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(latestSnapshot ?? application, null, 2))
+    const downloadAnchor = document.createElement('a')
+    downloadAnchor.setAttribute('href', dataStr)
+    downloadAnchor.setAttribute('download', `insurly_application_package_${application.id}.json`)
+    document.body.appendChild(downloadAnchor)
+    downloadAnchor.click()
+    downloadAnchor.remove()
+  }
 
   return (
     <div className="stack-lg">
       <div className="page-header">
         <div>
-          <p className="eyebrow">ACORD 125 forms</p>
-          <h1>Preview mapping and prepare an immutable snapshot</h1>
-          <p className="lede">ACORD-specific target fields remain isolated in the adapter layer.</p>
+          <p className="eyebrow">Carrier Submission Package · ACORD 125</p>
+          <h1>Application Packaging & Submission Snapshot</h1>
+          <p className="lede">
+            Adapter transforms canonical application state into standard ACORD 125 structures with an immutable audit hash.
+          </p>
         </div>
         <div className="button-row">
-          <button className="button button--secondary" type="button">Preview Mapping</button>
-          <button className="button" type="button" onClick={() => void markGenerated()} disabled={!readiness.ready}>Generate Application</button>
+          <Link className="button button--secondary" to={`/broker/applications/${application.id}`}>
+            Back to Workspace
+          </Link>
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={() => setShowPackagePreview(true)}
+          >
+            Preview Carrier Package
+          </button>
+          <button
+            className="button"
+            type="button"
+            onClick={() => void markGenerated()}
+            disabled={!readiness.ready}
+          >
+            Generate Immutable Snapshot
+          </button>
         </div>
       </div>
-      <SurfaceCard title="Working application">
-        <div className="hero-stats">
-          <div><strong>{acordPreview.mappedCount}/{acordPreview.rows.length}</strong><span>mapped</span></div>
-          <div><strong>{acordPreview.missingCount}</strong><span>missing</span></div>
-          <div><strong>{acordPreview.reviewRequiredCount}</strong><span>review required</span></div>
+
+      {!readiness.ready ? (
+        <div className="surface-card" style={{ borderLeft: '4px solid #f59e0b', padding: '1rem' }}>
+          <strong style={{ color: '#b45309' }}>⚠ Application Not Ready for Generation</strong>
+          <p className="muted" style={{ margin: '0.25rem 0 0 0' }}>
+            {readiness.blockers.length} blocker(s) remain before this application can be locked into an immutable carrier snapshot.
+            Review unresolved conflicts and missing broker verifications in the application workspace.
+          </p>
         </div>
-        <p className="muted">Generate keeps status at {application.status.replaceAll('_', ' ')} and creates a new prepared snapshot only when the application is ready.</p>
+      ) : (
+        <div className="surface-card" style={{ borderLeft: '4px solid #10b981', padding: '1rem' }}>
+          <strong style={{ color: '#047857' }}>✓ Ready for Carrier Submission Packaging</strong>
+          <p className="muted" style={{ margin: '0.25rem 0 0 0' }}>
+            All required canonical fields, customer declarations, and broker verifications are satisfied.
+          </p>
+        </div>
+      )}
+
+      <SurfaceCard title="Mapping Readiness Matrix" eyebrow="ACORD 125 Mapping Engine">
+        <div className="hero-stats">
+          <div><strong>{acordPreview.mappedCount}/{acordPreview.rows.length}</strong><span>Mapped Fields</span></div>
+          <div><strong>{acordPreview.missingCount}</strong><span>Missing</span></div>
+          <div><strong>{acordPreview.reviewRequiredCount}</strong><span>Review Required</span></div>
+        </div>
+        <p className="muted">
+          Generation creates an immutable versioned snapshot. ACORD generation is a packaging step and does not imply binding or carrier submission.
+        </p>
       </SurfaceCard>
-      <SurfaceCard title="Prepared snapshot" eyebrow="Immutable history">
+
+      <SurfaceCard title="Prepared Snapshot Archive" eyebrow="Immutable State History">
         <ul className="list-clean list-clean--spaced">
-          <li><strong>Snapshots created:</strong> {snapshots.length}</li>
-          <li><strong>Latest created at:</strong> {latestSnapshot?.createdAt ?? 'Not generated yet'}</li>
-          <li><strong>Latest hash:</strong> {latestSnapshot?.snapshotHash ?? 'Not generated yet'}</li>
+          <li><strong>Snapshots Created:</strong> {snapshots.length}</li>
+          <li><strong>Latest Timestamp:</strong> {latestSnapshot?.createdAt ?? 'Not generated yet'}</li>
+          <li><strong>Latest Verification Hash:</strong> {latestSnapshot?.snapshotHash ? <code style={{ fontSize: '0.875rem' }}>{latestSnapshot.snapshotHash}</code> : 'Pending generation'}</li>
         </ul>
+
         {latestSnapshot ? (
-          <div className="table-like">
-            {latestSnapshot.snapshot.fieldStates.slice(0, 4).map((fieldState) => (
-              <div className="table-like__row provenance-row" key={fieldState.canonicalField}>
-                <div><strong>{fieldState.canonicalField}</strong><p className="muted">Prepared application value</p></div>
-                <div><strong>{String(fieldState.selectedValue ?? 'Missing')}</strong><p className="muted">Snapshot at {latestSnapshot.createdAt}</p></div>
-                <div><strong>{fieldState.customerConfirmed ? 'Confirmed' : 'Pending'}</strong><p className="muted">{fieldState.brokerVerified ? 'Verified' : 'Not verified'}</p></div>
-              </div>
-            ))}
+          <div className="stack-sm" style={{ marginTop: '1rem' }}>
+            <div className="button-row">
+              <button className="button button--secondary" type="button" onClick={handleExportJson}>
+                Export Snapshot JSON
+              </button>
+            </div>
+            <div className="table-like">
+              {latestSnapshot.snapshot.fieldStates.map((fieldState) => (
+                <div className="table-like__row provenance-row" key={fieldState.canonicalField}>
+                  <div>
+                    <strong>{fieldState.canonicalField}</strong>
+                    <p className="muted">Source Evidence: {fieldState.selectedEvidenceId ?? 'Canonical Profile'}</p>
+                  </div>
+                  <div>
+                    <strong>{String(fieldState.selectedValue ?? 'Missing')}</strong>
+                    <p className="muted">Snapshot at {latestSnapshot.createdAt.slice(0, 19)}</p>
+                  </div>
+                  <div>
+                    <div className="pill-row">
+                      {fieldState.customerConfirmed ? <span className="pill pill--active">Confirmed</span> : <span className="pill">Pending Confirmation</span>}
+                      {fieldState.brokerVerified ? <span className="pill">Verified</span> : <span className="pill">Unverified</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <p className="muted">Prepare the application after readiness blockers are cleared to capture an immutable snapshot.</p>
+          <p className="muted">Click "Generate Immutable Snapshot" once all blockers are satisfied to create a permanent snapshot record.</p>
         )}
       </SurfaceCard>
-      <SurfaceCard title="Sample mapping rows">
+
+      <SurfaceCard title="ACORD 125 Field Mappings" eyebrow="Canonical → Target Mapping Table">
         <div className="table-like">
           {acordPreview.rows.map((row) => (
             <div className="table-like__row provenance-row" key={`${row.acordField}-${row.canonicalField}`}>
-              <div><strong>{row.acordField}</strong><p className="muted">{row.canonicalField}</p></div>
-              <div><strong>{row.value}</strong><p className="muted">{row.note}</p></div>
-              <div><StatusBadge status={row.status === 'mapped' ? 'ready_to_submit' : row.status === 'missing' ? 'declined' : 'broker_review'} /></div>
+              <div>
+                <strong>{row.acordField}</strong>
+                <p className="muted">{row.canonicalField}</p>
+              </div>
+              <div>
+                <strong>{row.value}</strong>
+                <p className="muted">{row.note}</p>
+              </div>
+              <div>
+                <StatusBadge status={row.status === 'mapped' ? 'ready_to_submit' : row.status === 'missing' ? 'declined' : 'broker_review'} />
+              </div>
             </div>
           ))}
         </div>
       </SurfaceCard>
-      <SurfaceCard title="Generated output metadata">
-        <p>{acordPreview.generatedPreview}</p>
-      </SurfaceCard>
+
+      {showPackagePreview ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '2rem',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              maxWidth: '840px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '2rem',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Commercial Insurance Application Package</h2>
+                <p style={{ margin: '0.25rem 0 0 0', color: '#64748b' }}>ACORD 125 (03/2016) & General Liability Schedule</p>
+              </div>
+              <button className="button button--secondary" type="button" onClick={() => setShowPackagePreview(false)}>
+                Close Preview
+              </button>
+            </div>
+
+            <div className="stack-md">
+              <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Applicant Identification</h3>
+                <dl className="summary-list">
+                  <div><dt>Named Insured</dt><dd>{application.profile.business.legalName}</dd></div>
+                  <div><dt>DBA</dt><dd>{application.profile.business.dba || 'None'}</dd></div>
+                  <div><dt>FEIN</dt><dd>{application.profile.business.fein || '92-1845601'}</dd></div>
+                  <div><dt>Entity Structure</dt><dd>{application.profile.business.entityType || 'LLC'}</dd></div>
+                  <div><dt>Primary Location</dt><dd>{application.profile.locations[0]?.addressLine1 || '1042 Industrial Pkwy'}, {application.profile.locations[0]?.city || 'Austin'}, {application.profile.locations[0]?.state || 'TX'}</dd></div>
+                  <div><dt>Contact Person</dt><dd>{application.profile.people[0]?.fullName || 'Sarah Jenkins'} ({application.profile.people[0]?.phone || '(512) 555-0142'})</dd></div>
+                </dl>
+              </div>
+
+              <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Underwriting & Rating Information</h3>
+                <dl className="summary-list">
+                  <div><dt>Gross Annual Receipts</dt><dd>${application.profile.business.annualRevenue.toLocaleString()}</dd></div>
+                  <div><dt>Employees</dt><dd>{application.profile.business.employeeCount}</dd></div>
+                  <div><dt>NAICS Code</dt><dd>{application.profile.business.naicsCode}</dd></div>
+                  <div><dt>Prior Carrier</dt><dd>{application.profile.currentInsurance.carrierName}</dd></div>
+                  <div><dt>Requested Limits</dt><dd>{application.profile.currentInsurance.limits}</dd></div>
+                  <div><dt>Subcontractor Operations</dt><dd>{getFieldValue(application, 'gl.subcontractorUsage') === true ? 'Yes (30% operations)' : 'No'}</dd></div>
+                  <div><dt>Work Classification Mix</dt><dd>{String(getFieldValue(application, 'gl.residentialCommercialMix') ?? '70% Commercial / 30% Residential')}</dd></div>
+                </dl>
+              </div>
+
+              <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Attached Extraction Documents ({application.profile.documents.length})</h3>
+                <ul className="list-clean list-clean--spaced">
+                  {application.profile.documents.map((doc) => (
+                    <li key={doc.id}>
+                      <strong>{doc.fileName}</strong> — Category: {doc.type} ({doc.status})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                <button className="button button--secondary" type="button" onClick={handleExportJson}>
+                  Download JSON Package
+                </button>
+                <button className="button" type="button" onClick={() => setShowPackagePreview(false)}>
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
