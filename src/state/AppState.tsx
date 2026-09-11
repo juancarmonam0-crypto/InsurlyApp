@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { demoApplication, demoCustomer } from '../data/mock/insurly'
-import type { ApplicationRecord, ApplicationSnapshotRecord, CustomerRecord, PersistenceState } from '../domain/types'
+import type { ApplicationRecord, ApplicationSnapshotRecord, CustomerRecord, PersistenceState, ProfileFactMetadata } from '../domain/types'
 import { buildAcord125Preview } from '../adapters/applications/acord125/adapter'
 import { getApplicationDefinition } from '../domain/applicationDefinitions'
 import {
   answerRequirement,
   applyCustomerReviewChange,
   confirmCustomerReview,
-  markGenerated,
   processDocumentIntake,
   recalculateApplication,
   resolveApplicationConflict,
   verifyApplication,
 } from '../services/application/workflow'
 import { calculateReadiness } from '../services/application/readinessEngine'
-import { createApplicationSnapshot } from '../services/application/snapshotService'
+import { prepareApplicationPackage } from '../services/application/snapshotService'
 import {
   createSnapshotRecord,
   getPersistenceSummary,
@@ -22,6 +21,12 @@ import {
   persistWorkspace,
   type ApplicationWorkspace,
 } from '../services/storage'
+import {
+  promoteConfirmedApplicationFactsToProfile,
+  setProfileFact,
+} from '../services/customerProfileService'
+import { createNewApplicationFromProfile, prefillApplicationFromProfile } from '../services/profileMappingEngine'
+import { processDocument } from '../services/documents/documentProcessingService'
 import { AppStateContext, type AppStateValue } from './AppStateContext'
 
 const createSeedApplication = () => structuredClone(demoApplication)
@@ -50,17 +55,6 @@ const syncCustomerFromApplication = (customer: CustomerRecord, application: Appl
     documents: structuredClone(application.profile.documents),
   },
 })
-
-const terminalStatuses = new Set(['submitted', 'quoted', 'bound', 'declined', 'closed'])
-
-import {
-  promoteConfirmedApplicationFactsToProfile,
-  setProfileFact,
-} from '../services/customerProfileService'
-import { createNewApplicationFromProfile, prefillApplicationFromProfile } from '../services/profileMappingEngine'
-import type { ProfileFactMetadata } from '../domain/types'
-
-import { processDocument } from '../services/documents/documentProcessingService'
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const seedWorkspace = useMemo(() => createSeedWorkspace(), [])
@@ -172,20 +166,14 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         updateFromApplication(resolveApplicationConflict(application, conflictId, action, correctedValue)),
       markBrokerVerified: () => updateFromApplication(verifyApplication(application)),
       markGenerated: async () => {
-        const generatedApplication = markGenerated(application)
-        const generatedReadiness = calculateReadiness(
-          generatedApplication,
-          getApplicationDefinition(generatedApplication.definitionId, generatedApplication.definitionVersion),
-        )
-
-        if (!(generatedReadiness.ready || terminalStatuses.has(generatedApplication.status))) {
-          updateFromApplication(generatedApplication)
+        const result = prepareApplicationPackage(application, 'broker-demo-user')
+        if (!result.success) {
+          updateFromApplication(application)
           return
         }
 
-        const snapshot = createApplicationSnapshot(generatedApplication, generatedReadiness, buildAcord125Preview(generatedApplication))
-        const persistedSnapshot = await createSnapshotRecord(snapshot)
-        updateFromApplication(generatedApplication)
+        const persistedSnapshot = await createSnapshotRecord(result.snapshot)
+        updateFromApplication(result.application)
         setSnapshots((current) => [...current, persistedSnapshot].sort((left, right) => left.createdAt.localeCompare(right.createdAt)))
       },
       updateCustomerProfileFact: (fact: ProfileFactMetadata) => {

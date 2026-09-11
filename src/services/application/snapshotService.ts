@@ -3,8 +3,13 @@ import type {
   ApplicationRecord,
   ApplicationSnapshotPayload,
   ApplicationSnapshotRecord,
+  ReadinessBlocker,
   ReadinessResult,
 } from '../../domain/types'
+import { getApplicationDefinition } from '../../domain/applicationDefinitions'
+import { calculateReadiness } from './readinessEngine'
+import { buildAcord125Preview } from '../../adapters/applications/acord125/adapter'
+import { markGenerated } from './workflow'
 
 const stableStringify = (value: unknown): string => {
   if (Array.isArray(value)) {
@@ -155,3 +160,48 @@ export const createApplicationSnapshot = (
     snapshot: payload,
   } satisfies ApplicationSnapshotRecord
 }
+
+export type PreparationResult =
+  | {
+      success: true
+      application: ApplicationRecord
+      snapshot: ApplicationSnapshotRecord
+      acordPreview: AcordPreview
+      readiness: ReadinessResult
+    }
+  | {
+      success: false
+      error: string
+      blockers: ReadinessBlocker[]
+      readiness: ReadinessResult
+    }
+
+export const prepareApplicationPackage = (
+  application: ApplicationRecord,
+  createdBy = 'broker-pilot-user',
+): PreparationResult => {
+  const definition = getApplicationDefinition(application.definitionId, application.definitionVersion)
+  const readiness = calculateReadiness(application, definition)
+
+  if (!readiness.ready) {
+    return {
+      success: false,
+      error: `Application is not ready for preparation (${readiness.blockers.length} blocker(s) remaining).`,
+      blockers: readiness.blockers,
+      readiness,
+    }
+  }
+
+  const generatedApplication = markGenerated(application)
+  const acordPreview = buildAcord125Preview(generatedApplication)
+  const snapshot = createApplicationSnapshot(generatedApplication, readiness, acordPreview, createdBy)
+
+  return {
+    success: true,
+    application: generatedApplication,
+    snapshot,
+    acordPreview,
+    readiness,
+  }
+}
+
